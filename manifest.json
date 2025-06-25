@@ -9,11 +9,17 @@
     "storage",
     "scripting",
     "downloads",
-    "tabs"
+    "tabs",
+    "identity"
   ],
   "host_permissions": [
-    "https://www.fiverr.com/*"
+    "https://www.fiverr.com/*",
+    "https://www.googleapis.com/*"
   ],
+  "oauth2": {
+    "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": ["openid", "email", "profile"]
+  },
   "side_panel": {
     "default_path": "popup.html"
   },
@@ -27,6 +33,12 @@
     {
       "matches": ["https://www.fiverr.com/*"],
       "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["success.html", "cancel.html", "success.js", "checkout.html"],
+      "matches": ["<all_urls>"]
     }
   ]
 }

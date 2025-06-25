@@ -47,9 +47,17 @@ module.exports = async (req, res) => {
     }
 
     try {
-      // Validate request origin for security
+      // Extract extension ID from origin header
       const origin = req.headers.origin || req.headers.referer;
       console.log('Request from origin:', origin);
+      
+      let extensionId = 'glhngllgakepoelafphbpjgdnknloikj'; // Default to your extension ID
+      if (origin && origin.includes('chrome-extension://')) {
+        const match = origin.match(/chrome-extension:\/\/([^\/]+)/);
+        if (match) {
+          extensionId = match[1];
+        }
+      }
       
       // Create checkout session with subscription mode for recurring prices
       const session = await stripe.checkout.sessions.create({
@@ -60,19 +68,21 @@ module.exports = async (req, res) => {
             quantity: 1,
           },
         ],
-        mode: 'subscription', // Changed from 'payment' to 'subscription'
-        success_url: `${origin || 'chrome-extension://your-extension-id'}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${origin || 'chrome-extension://your-extension-id'}/cancel.html`,
+        mode: 'subscription',
+        success_url: `chrome-extension://${extensionId}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `chrome-extension://${extensionId}/cancel.html`,
         metadata: {
           source: 'fiverr-extractor-extension',
           timestamp: new Date().toISOString(),
-          origin: origin || 'unknown'
+          origin: origin || 'unknown',
+          extensionId: extensionId
         },
         // Add subscription-specific settings
         subscription_data: {
           metadata: {
             source: 'fiverr-extractor-extension',
-            plan: 'pro'
+            plan: 'pro',
+            extensionId: extensionId
           }
         }
       });
@@ -84,11 +94,12 @@ module.exports = async (req, res) => {
 
       console.log('Checkout session created successfully:', session.id);
       console.log('Checkout URL:', session.url);
+      console.log('Success URL:', `chrome-extension://${extensionId}/success.html`);
       
       // Return both sessionId and the checkout URL
       res.status(200).json({ 
         sessionId: session.id,
-        checkoutUrl: session.url // This is the proper Stripe checkout URL
+        checkoutUrl: session.url
       });
       return;
 

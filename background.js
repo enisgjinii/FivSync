@@ -16,6 +16,35 @@ let ongoingProcesses = {
     conversations: new Map()  // tabId -> status
 };
 
+// Track pro status
+let proStatus = {
+  isPro: false,
+  userEmail: null,
+  activatedAt: null
+};
+
+// Initialize pro status on startup
+chrome.runtime.onStartup.addListener(() => {
+  loadProStatus();
+});
+
+chrome.runtime.onInstalled.addListener(() => {
+  loadProStatus();
+});
+
+// Load pro status from storage
+function loadProStatus() {
+  chrome.storage.local.get(['isPro', 'userEmail', 'activatedAt', 'sessionId'], (result) => {
+    proStatus = {
+      isPro: result.isPro || false,
+      userEmail: result.userEmail || null,
+      activatedAt: result.activatedAt || null,
+      sessionId: result.sessionId || null
+    };
+    console.log('Pro status loaded:', proStatus);
+  });
+}
+
 // Listen for navigation to Fiverr pages
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab && tab.url && tab.url.includes('fiverr.com')) {
@@ -64,6 +93,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
       }
     });
+    
+    // Send pro status to popup
+    sendResponse({ proStatus: proStatus });
+    return true;
+  }
+
+  // Handle pro activation
+  else if (request.type === 'PRO_ACTIVATED') {
+    console.log('Pro features activated:', request.data);
+    proStatus = {
+      isPro: true,
+      userEmail: request.data.userEmail || null,
+      activatedAt: request.data.activatedAt,
+      sessionId: request.data.sessionId
+    };
+    
+    // Broadcast pro activation to all tabs
+    chrome.tabs.query({}, (tabs) => {
+      tabs.forEach(tab => {
+        chrome.tabs.sendMessage(tab.id, {
+          type: 'PRO_STATUS_UPDATED',
+          proStatus: proStatus
+        }).catch(() => {
+          // Ignore errors for tabs without content scripts
+        });
+      });
+    });
+  }
+
+  // Handle pro status check
+  else if (request.type === 'CHECK_PRO_STATUS') {
+    sendResponse({ proStatus: proStatus });
+    return true;
   }
 
   // Track process status updates

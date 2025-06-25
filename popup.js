@@ -612,32 +612,147 @@ function stopStatusChecking() {
 
 // --- Pro Plan & License ---
 let isPro = false;
+let userInfo = null;
 
-async function checkLicenseStatus() {
+async function checkProStatus() {
   return new Promise(resolve => {
-    chrome.storage.local.get('licenseKey', function(result) {
-      if (result.licenseKey === 'PRO-USER') { // Mock validation
-        isPro = true;
-        document.getElementById('proSection').style.display = 'none';
-        document.getElementById('licenseStatus').textContent = 'Status: Pro';
-      } else {
-        isPro = false;
-        document.getElementById('proSection').style.display = 'block';
-        document.getElementById('licenseStatus').textContent = 'Status: Free';
-      }
+    chrome.storage.local.get(['isPro', 'userEmail', 'userName', 'activatedAt', 'sessionId'], function(result) {
+      isPro = result.isPro || false;
+      userInfo = {
+        email: result.userEmail,
+        name: result.userName,
+        activatedAt: result.activatedAt,
+        sessionId: result.sessionId
+      };
+      
+      console.log('Pro status checked:', { isPro, userInfo });
+      
+      // Update UI based on pro status
+      updateProUI();
       toggleProFeatures(isPro);
       resolve(isPro);
     });
   });
 }
 
-function toggleProFeatures(isPro) {
-  const proButtons = document.querySelectorAll('.pro-feature'); // Add this class to pro buttons
+function updateProUI() {
+  const proSection = document.getElementById('proSection');
+  const licenseStatus = document.getElementById('licenseStatus');
+  
   if (isPro) {
-    proButtons.forEach(btn => btn.disabled = false);
+    proSection.style.display = 'none';
+    if (licenseStatus) {
+      const statusText = userInfo.email 
+        ? `Status: Pro (${userInfo.email})`
+        : 'Status: Pro (Local)';
+      licenseStatus.innerHTML = `
+        <div style="color: #4CAF50; font-weight: 600;">${statusText}</div>
+        ${userInfo.activatedAt ? `<div style="font-size: 0.8rem; color: #666;">Activated: ${new Date(userInfo.activatedAt).toLocaleDateString()}</div>` : ''}
+      `;
+    }
   } else {
-    proButtons.forEach(btn => btn.disabled = true);
+    proSection.style.display = 'block';
+    if (licenseStatus) {
+      licenseStatus.innerHTML = `
+        <div style="color: #666;">Status: Free</div>
+        <div style="font-size: 0.8rem; color: #666;">Upgrade to unlock all features</div>
+      `;
+    }
   }
+}
+
+function toggleProFeatures(isPro) {
+  const proButtons = document.querySelectorAll('.pro-feature');
+  if (isPro) {
+    proButtons.forEach(btn => {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.title = '';
+    });
+  } else {
+    proButtons.forEach(btn => {
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      btn.title = 'Upgrade to Pro to use this feature';
+    });
+  }
+}
+
+// Google Authentication in settings
+function initializeGoogleAuth() {
+  const googleSignInBtn = document.createElement('button');
+  googleSignInBtn.id = 'googleAuthBtn';
+  googleSignInBtn.className = 'shad-button secondary';
+  googleSignInBtn.style.marginTop = '0.5rem';
+  
+  if (userInfo.email) {
+    googleSignInBtn.innerHTML = `✅ Linked to ${userInfo.email}`;
+    googleSignInBtn.disabled = true;
+  } else if (isPro) {
+    googleSignInBtn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" style="margin-right: 0.5rem;">
+        <path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      Link Google Account
+    `;
+    googleSignInBtn.onclick = performGoogleAuth;
+  } else {
+    googleSignInBtn.style.display = 'none';
+  }
+  
+  // Add after license status
+  const licenseStatus = document.getElementById('licenseStatus');
+  if (licenseStatus && licenseStatus.parentNode) {
+    licenseStatus.parentNode.insertBefore(googleSignInBtn, licenseStatus.nextSibling);
+  }
+}
+
+function performGoogleAuth() {
+  const googleSignInBtn = document.getElementById('googleAuthBtn');
+  googleSignInBtn.disabled = true;
+  googleSignInBtn.innerHTML = '<span>Signing in...</span>';
+
+  chrome.identity.getAuthToken({ interactive: true }, (token) => {
+    if (chrome.runtime.lastError) {
+      console.error('Auth error:', chrome.runtime.lastError);
+      googleSignInBtn.disabled = false;
+      googleSignInBtn.innerHTML = 'Link Google Account - Try Again';
+      return;
+    }
+
+    fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    .then(response => response.json())
+    .then(userData => {
+      console.log('Google user info:', userData);
+      
+      chrome.storage.local.set({
+        userEmail: userData.email,
+        userName: userData.name,
+        userPicture: userData.picture,
+        googleLinked: true
+      }, () => {
+        userInfo.email = userData.email;
+        userInfo.name = userData.name;
+        updateProUI();
+        googleSignInBtn.innerHTML = `✅ Linked to ${userData.email}`;
+        googleSignInBtn.disabled = true;
+        
+        updateStatus('Google account linked successfully!');
+      });
+    })
+    .catch(error => {
+      console.error('Failed to get user info:', error);
+      googleSignInBtn.disabled = false;
+      googleSignInBtn.innerHTML = 'Link Google Account - Try Again';
+    });
+  });
 }
 
 function activateLicense() {
@@ -646,9 +761,19 @@ function activateLicense() {
     document.getElementById('licenseStatus').textContent = 'Please enter a key.';
     return;
   }
-  chrome.storage.local.set({ licenseKey: licenseKey }, () => {
-    checkLicenseStatus();
-  });
+  
+  // Legacy support for old license keys
+  if (licenseKey === 'PRO-USER') {
+    chrome.storage.local.set({ 
+      isPro: true,
+      activatedAt: new Date().toISOString(),
+      licenseKey: licenseKey 
+    }, () => {
+      checkProStatus();
+    });
+  } else {
+    document.getElementById('licenseStatus').textContent = 'Invalid license key.';
+  }
 }
 
 // --- Stripe ---
@@ -706,6 +831,11 @@ function initializeSettings() {
   settingsBtn.addEventListener('click', () => {
     settingsModal.style.display = 'block';
     modalBackdrop.style.display = 'block';
+    
+    // Initialize Google Auth button when modal opens
+    setTimeout(() => {
+      initializeGoogleAuth();
+    }, 100);
   });
 
   // Hide modal
@@ -831,8 +961,8 @@ function initializeSettings() {
     });
   });
 
-  // Check license status
-  checkLicenseStatus();
+  // Check pro status
+  checkProStatus();
 
   // Initialize Stripe
   initializeStripe();
@@ -847,8 +977,19 @@ function initializeSettings() {
 
 // Initialize popup
 document.addEventListener('DOMContentLoaded', () => {
-  // Initialize connection with background script
-  chrome.runtime.sendMessage({ type: 'INIT_POPUP' });
+  // Initialize connection with background script and get pro status
+  chrome.runtime.sendMessage({ type: 'INIT_POPUP' }, (response) => {
+    if (response && response.proStatus) {
+      isPro = response.proStatus.isPro;
+      userInfo = {
+        email: response.proStatus.userEmail,
+        activatedAt: response.proStatus.activatedAt,
+        sessionId: response.proStatus.sessionId
+      };
+      updateProUI();
+      toggleProFeatures(isPro);
+    }
+  });
 
   // --- Contact Search ---
   const contactSearch = document.getElementById('contactSearch');
@@ -888,6 +1029,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Export All button click handler
   document.getElementById('exportAllBtn').addEventListener('click', () => {
+    if (!isPro) {
+      document.getElementById('upgradeBtn').click();
+      return;
+    }
+    
     chrome.storage.local.get(['allContacts'], function(result) {
       if (result.allContacts && result.allContacts.length > 0) {
         exportAllConversations(result.allContacts);
@@ -988,6 +1134,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Pro feature buttons with upgrade prompts
+  const proFeatureButtons = [
+    'exportTxtBtn', 'exportCsvBtn', 'exportMetadataBtn', 'viewAttachmentsBtn'
+  ];
+
+  proFeatureButtons.forEach(buttonId => {
+    const button = document.getElementById(buttonId);
+    if (button) {
+      button.addEventListener('click', (e) => {
+        if (!isPro) {
+          e.preventDefault();
+          document.getElementById('upgradeBtn').click();
+          return false;
+        }
+      });
+    }
+  });
+
   // Download button click handler
   document.getElementById('downloadBtn').addEventListener('click', () => {
     chrome.storage.local.get(['markdownContent', 'currentUsername'], function(result) {
@@ -1046,6 +1210,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Export metadata button click handler
   document.getElementById('exportMetadataBtn').addEventListener('click', () => {
+    if (!isPro) {
+      document.getElementById('upgradeBtn').click();
+      return;
+    }
     exportMetadata();
   });
 
@@ -1059,7 +1227,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initializeSettings();
 });
 
-// Handle messages from content script
+// Handle messages from content script and background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.type) {
     case 'CONTACTS_PROGRESS':
@@ -1091,6 +1259,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       setButtonLoading('extractBtn', false);
       updateStatus(request.error, true);
       addLogEntry(request.error, true);
+      break;
+      
+    case 'PRO_STATUS_UPDATED':
+      // Handle pro status updates from background script
+      if (request.proStatus) {
+        isPro = request.proStatus.isPro;
+        userInfo = {
+          email: request.proStatus.userEmail,
+          activatedAt: request.proStatus.activatedAt,
+          sessionId: request.proStatus.sessionId
+        };
+        updateProUI();
+        toggleProFeatures(isPro);
+        updateStatus('Pro features activated! Refresh to see changes.', false, false);
+      }
       break;
   }
 });
