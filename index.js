@@ -1,4 +1,4 @@
-import { auth, onAuthStateChanged, signOut } from './firebase-auth.js';
+import { onAuth, logOut } from './firebase-auth.js';
 
 // Import formatDate function from content.js
 async function formatDate(timestamp) {
@@ -978,7 +978,7 @@ function initializeSettings() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  onAuthStateChanged(auth, user => {
+  onAuth(user => {
     const mainContent = document.getElementById('main-content');
     const authContainer = document.getElementById('auth-container');
     const userInfo = document.getElementById('user-info');
@@ -1143,7 +1143,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const logoutButton = document.getElementById('logout-button');
   logoutButton.addEventListener('click', () => {
-    signOut(auth).catch((error) => {
+    logOut().catch((error) => {
       console.error('Sign out error', error);
     });
   });
