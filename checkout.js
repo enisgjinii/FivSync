@@ -25,8 +25,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Function to redirect to Stripe Checkout
   function redirectToStripe() {
-    // Fetch the Checkout Session ID from your backend
-    fetch('https://fiv-sync.vercel.app/', {
+    // Use the direct API endpoint instead of root path
+    const apiUrl = 'https://fiv-sync.vercel.app/api/create-checkout-session';
+    console.log('Fetching from:', apiUrl);
+    
+    fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -41,13 +44,18 @@ document.addEventListener('DOMContentLoaded', () => {
       statusContainer.textContent = 'Server response received. Processing...';
       
       if (!response.ok) {
-        // If server returns an error, show it
-        return response.json().then(err => {
-          const errorMsg = `Server error: ${response.status} - ${err.error?.message || 'Unknown error'}`;
+        // Try to get the error details from the response
+        return response.text().then(errorText => {
+          console.error('Server error response:', errorText);
+          let errorData;
+          try {
+            errorData = JSON.parse(errorText);
+          } catch (e) {
+            errorData = { error: { message: errorText || 'Unknown server error' } };
+          }
+          
+          const errorMsg = `Server error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`;
           throw new Error(errorMsg);
-        }).catch(() => {
-          // If JSON parsing fails, create a generic error
-          throw new Error(`Server error: ${response.status} - ${response.statusText}`);
         });
       }
       return response.json();
@@ -73,6 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
         errorMessage = 'Payment server configuration issue. Please contact support.';
       } else if (error.message.includes('Failed to fetch')) {
         errorMessage = 'Unable to connect to payment server. Please check your internet connection.';
+      } else if (error.message.includes('500')) {
+        errorMessage = 'Payment server error. This might be due to missing configuration (Stripe key). Please contact support.';
       }
       
       showError(`Error: ${errorMessage}`);
