@@ -83,7 +83,13 @@ module.exports = async (req, res) => {
       }
 
       console.log('Checkout session created successfully:', session.id);
-      res.status(200).json({ sessionId: session.id });
+      console.log('Checkout URL:', session.url);
+      
+      // Return both sessionId and the checkout URL
+      res.status(200).json({ 
+        sessionId: session.id,
+        checkoutUrl: session.url // This is the proper Stripe checkout URL
+      });
       return;
 
     } catch (err) {

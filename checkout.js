@@ -64,14 +64,18 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log('Checkout session received:', session);
       statusContainer.textContent = 'Session created. Redirecting to Stripe...';
       
-      if (!session || !session.sessionId) {
-        throw new Error('Invalid session ID received from server.');
+      // Check for the checkout URL first, fallback to sessionId if needed
+      if (session.checkoutUrl) {
+        console.log('Redirecting to Stripe checkout URL:', session.checkoutUrl);
+        window.location.href = session.checkoutUrl;
+      } else if (session.sessionId) {
+        // Fallback: construct URL if checkoutUrl is not provided
+        const checkoutUrl = `https://checkout.stripe.com/c/pay/${session.sessionId}`;
+        console.log('Redirecting to fallback URL:', checkoutUrl);
+        window.location.href = checkoutUrl;
+      } else {
+        throw new Error('No valid checkout URL or session ID received from server.');
       }
-      
-      // Redirect directly to Stripe Checkout URL
-      const checkoutUrl = `https://checkout.stripe.com/pay/${session.sessionId}`;
-      console.log('Redirecting to:', checkoutUrl);
-      window.location.href = checkoutUrl;
     })
     .catch(error => {
       console.error('Checkout error:', error);
