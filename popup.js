@@ -13,11 +13,16 @@ function showAuthScreen() {
 }
 
 function showMainApp(user) {
+  // The Firebase user object sometimes has data nested in _delegate
+  const userEmail = user.email || (user._delegate && user._delegate.email);
+  const userId = user.uid || (user._delegate && user._delegate.uid);
+  
   document.getElementById('auth-container').style.display = 'none';
   document.getElementById('user-info').style.display = 'block';
   document.getElementById('main-content').style.display = 'block';
+  document.getElementById('upgradeBtn').disabled = false;
   
-  document.getElementById('user-email').textContent = user.email;
+  document.getElementById('user-email').textContent = userEmail;
   currentUser = user;
   
   // Update pro status from user object
@@ -25,11 +30,18 @@ function showMainApp(user) {
   updateProUI();
   
   // Store user info in Chrome storage for checkout
-  chrome.storage.local.set({
-    userEmail: user.email,
-    userId: user.uid,
+  const userDataToStore = {
+    userEmail: userEmail,
+    userId: userId,
     isPro: isPro,
     isAuthenticated: true
+  };
+  
+  chrome.storage.local.set(userDataToStore, () => {
+    // Verification log to ensure storage is correct
+    chrome.storage.local.get(['userEmail', 'userId'], (result) => {
+      console.log('Verification - stored data:', result);
+    });
   });
   
   // Initialize app functionality
@@ -355,14 +367,25 @@ function initializeEventListeners() {
   });
 
   document.getElementById('upgradeBtn').addEventListener('click', () => {
-    // Get email from storage to ensure it's available for checkout
+    // Add debug logging to see what's in storage
+    chrome.storage.local.get(null, (allStorage) => {
+      console.log('All storage contents:', allStorage);
+    });
+    
+    // Only rely on storage for user email
     chrome.storage.local.get('userEmail', (result) => {
-        if (result && result.userEmail) {
-            chrome.tabs.create({ url: chrome.runtime.getURL('checkout.html') });
-        } else {
-            console.error("Upgrade error: No user email found in storage.");
-            updateStatus("Could not find user information. Please log in again.", true);
-        }
+      console.log('Retrieved userEmail from storage:', result.userEmail);
+      
+      if (result && result.userEmail) {
+        chrome.storage.local.set({ checkoutEmail: result.userEmail }, () => {
+          console.log('Set checkoutEmail and opening checkout page');
+          chrome.tabs.create({ url: chrome.runtime.getURL('checkout.html') });
+        });
+      } else {
+        console.error("Upgrade error: No user email found in storage.");
+        console.log('Current user object:', currentUser);
+        updateStatus("Could not find user information. Please log in again.", true);
+      }
     });
   });
 
