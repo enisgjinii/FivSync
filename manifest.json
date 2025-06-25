@@ -30,6 +30,6 @@
     }
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self' https://js.stripe.com; object-src 'self'"
+    "extension_pages": "script-src 'self'; connect-src https://api.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com; script-src-elem 'self' https://js.stripe.com"
   }
 }

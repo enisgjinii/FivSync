@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/create-checkout-session.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/create-checkout-session",
+      "dest": "/api/create-checkout-session.js"
+    }
+  ]
+} 

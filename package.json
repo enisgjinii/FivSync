@@ -1,0 +1,14 @@
+{
+  "name": "fiverr-extractor-backend",
+  "version": "1.0.0",
+  "description": "Backend for Fiverr Extractor Stripe integration.",
+  "main": "api/create-checkout-session.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "stripe": "^16.2.0"
+  },
+  "author": "",
+  "license": "ISC"
+} 

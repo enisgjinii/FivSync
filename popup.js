@@ -653,33 +653,9 @@ function activateLicense() {
 
 // --- Stripe ---
 function initializeStripe() {
-  const stripe = Stripe('pk_test_51Rdot52cWT3pj6Lz2TimjiPDbgpfOC1BBpwqaPSLpAlf2sOtTLaCcrQN2J72KDPLH7md8vUgneCi5BoledSJftw900ptMbSM9W');
   const upgradeBtn = document.getElementById('upgradeBtn');
   upgradeBtn.addEventListener('click', () => {
-    // Replace with your actual Stripe Price ID
-    const priceId = 'price_1RdoyZ2cWT3pj6Lz3uDiiKaP'; 
-    
-    updateStatus('Redirecting to checkout...', false, true);
-
-    // When the customer clicks on the button, redirect them to Checkout.
-    // NOTE: A backend is required to create a Checkout Session.
-    // The following is a CLIENT-SIDE ONLY example and will not work without a backend.
-    stripe.redirectToCheckout({
-        lineItems: [{
-            price: priceId,
-            quantity: 1,
-        }],
-        mode: 'payment',
-        // IMPORTANT: Replace these with your actual success and cancel URLs.
-        successUrl: 'https://example.com/success',
-        cancelUrl: 'https://example.com/cancel',
-    }).then(function (result) {
-        if (result.error) {
-            // If `redirectToCheckout` fails due to a browser or network
-            // error, display the localized error message to your customer.
-            updateStatus(result.error.message, true);
-        }
-    });
+    chrome.tabs.create({ url: chrome.runtime.getURL('checkout.html') });
   });
 }
 

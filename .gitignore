@@ -41,3 +41,6 @@ conversation*.json
 
 #Ignore cursor AI rules
 .cursor\rules\codacy.mdc
+
+# New additions
+.vercel
