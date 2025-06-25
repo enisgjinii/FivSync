@@ -1,15 +1,37 @@
 {
   "version": 2,
-  "builds": [
+  "functions": {
+    "api/create-checkout-session.js": {
+      "maxDuration": 10
+    }
+  },
+  "rewrites": [
     {
-      "src": "api/create-checkout-session.js",
-      "use": "@vercel/node"
+      "source": "/",
+      "destination": "/api/create-checkout-session"
+    },
+    {
+      "source": "/api/create-checkout-session",
+      "destination": "/api/create-checkout-session"
     }
   ],
-  "routes": [
+  "headers": [
     {
-      "src": "/api/create-checkout-session",
-      "dest": "/api/create-checkout-session.js"
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods", 
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        }
+      ]
     }
   ]
 } 

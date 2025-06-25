@@ -1,9 +1,9 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 module.exports = async (req, res) => {
-  // Set CORS headers to allow requests from your extension
+  // Set CORS headers to allow requests from Chrome extensions
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS, GET');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   // Handle preflight OPTIONS request
@@ -12,8 +12,20 @@ module.exports = async (req, res) => {
     return;
   }
 
+  // Handle GET requests to root path
+  if (req.method === 'GET') {
+    res.status(200).json({ 
+      message: 'Fiverr Extractor Payment API',
+      status: 'online',
+      endpoints: {
+        checkout: 'POST /'
+      }
+    });
+    return;
+  }
+
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
+    res.setHeader('Allow', 'POST, GET, OPTIONS');
     return res.status(405).json({ error: { message: 'Method Not Allowed' } });
   }
 
@@ -28,6 +40,7 @@ module.exports = async (req, res) => {
   try {
     // Validate request origin for security
     const origin = req.headers.origin || req.headers.referer;
+    console.log('Request from origin:', origin);
     
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
@@ -43,7 +56,8 @@ module.exports = async (req, res) => {
       cancel_url: `${origin || 'chrome-extension://your-extension-id'}/cancel.html`,
       metadata: {
         source: 'fiverr-extractor-extension',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        origin: origin || 'unknown'
       }
     });
 

@@ -10,9 +10,17 @@ document.addEventListener('DOMContentLoaded', () => {
     errorContainer.style.display = 'block';
     errorContainer.innerHTML = `
       <div>${message}</div>
-      <button class="retry-button" onclick="location.reload()">Retry Payment</button>
+      <button class="retry-button" id="retryButton">Retry Payment</button>
     `;
     statusContainer.style.display = 'none';
+    
+    // Add event listener to retry button (CSP compliant)
+    const retryButton = document.getElementById('retryButton');
+    if (retryButton) {
+      retryButton.addEventListener('click', () => {
+        location.reload();
+      });
+    }
   }
 
   // Function to redirect to Stripe Checkout
@@ -24,7 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        // Add any required data here
+        source: 'chrome-extension',
+        timestamp: new Date().toISOString()
       })
     })
     .then(response => {
@@ -53,11 +62,20 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Redirect directly to Stripe Checkout URL
       const checkoutUrl = `https://checkout.stripe.com/pay/${session.sessionId}`;
+      console.log('Redirecting to:', checkoutUrl);
       window.location.href = checkoutUrl;
     })
     .catch(error => {
       console.error('Checkout error:', error);
-      showError(`Error: ${error.message}. Please try again or contact support.`);
+      
+      let errorMessage = error.message;
+      if (error.message.includes('CORS')) {
+        errorMessage = 'Payment server configuration issue. Please contact support.';
+      } else if (error.message.includes('Failed to fetch')) {
+        errorMessage = 'Unable to connect to payment server. Please check your internet connection.';
+      }
+      
+      showError(`Error: ${errorMessage}`);
     });
   }
 
