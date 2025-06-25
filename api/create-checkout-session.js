@@ -51,22 +51,29 @@ module.exports = async (req, res) => {
       const origin = req.headers.origin || req.headers.referer;
       console.log('Request from origin:', origin);
       
-      // Create checkout session
+      // Create checkout session with subscription mode for recurring prices
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         line_items: [
           {
-            price: 'price_1RdoyZ2cWT3pj6Lz3uDiiKaP', // Your price ID
+            price: 'price_1RdoyZ2cWT3pj6Lz3uDiiKaP', // Your recurring price ID
             quantity: 1,
           },
         ],
-        mode: 'payment',
+        mode: 'subscription', // Changed from 'payment' to 'subscription'
         success_url: `${origin || 'chrome-extension://your-extension-id'}/success.html?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${origin || 'chrome-extension://your-extension-id'}/cancel.html`,
         metadata: {
           source: 'fiverr-extractor-extension',
           timestamp: new Date().toISOString(),
           origin: origin || 'unknown'
+        },
+        // Add subscription-specific settings
+        subscription_data: {
+          metadata: {
+            source: 'fiverr-extractor-extension',
+            plan: 'pro'
+          }
         }
       });
 

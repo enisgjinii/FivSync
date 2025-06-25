@@ -81,8 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
         errorMessage = 'Payment server configuration issue. Please contact support.';
       } else if (error.message.includes('Failed to fetch')) {
         errorMessage = 'Unable to connect to payment server. Please check your internet connection.';
-      } else if (error.message.includes('500')) {
-        errorMessage = 'Payment server error. This might be due to missing configuration (Stripe key). Please contact support.';
+      } else if (error.message.includes('StripeInvalidRequestError')) {
+        errorMessage = 'Payment configuration error. Please contact support.';
       }
       
       showError(`Error: ${errorMessage}`);
