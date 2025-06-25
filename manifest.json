@@ -5,7 +5,6 @@
   "description": "Extract conversations from Fiverr inbox",
   "permissions": [
     "sidePanel",
-    "activeTab",
     "storage",
     "scripting",
     "downloads",
