@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Fiverr Conversation Extractor",
+  "version": "1.0.3",
+  "description": "Extract conversations from Fiverr inbox",
+  "permissions": [
+    "sidePanel",
+    "activeTab",
+    "storage",
+    "scripting",
+    "downloads",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://www.fiverr.com/*"
+  ],
+  "side_panel": {
+    "default_path": "popup.html"
+  },
+  "action": {
+    "default_title": "Fiverr Conversation Extractor"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.fiverr.com/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
