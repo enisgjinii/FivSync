@@ -17,7 +17,9 @@
     "https://www.googleapis.com/*",
     "https://*.firebaseapp.com/*",
     "https://securetoken.googleapis.com/*",
-    "https://identitytoolkit.googleapis.com/*"
+    "https://identitytoolkit.googleapis.com/*",
+    "https://firestore.googleapis.com/*",
+    "https://*.cloudfunctions.net/*"
   ],
   "oauth2": {
     "client_id": "1018274925964-v137jc5po2g0ifdj0a4mfljntu910j3k.apps.googleusercontent.com",
@@ -41,7 +43,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["success.html", "cancel.html", "success.js", "checkout.html"],
+      "resources": ["success.html", "cancel.html", "success.js", "checkout.html", "firebase-auth.js"],
       "matches": ["<all_urls>"]
     }
   ],

@@ -1,3 +1,6 @@
+// Import Firebase functions
+import { onAuth, logOut, signUp, logIn, UserSubscription } from './firebase-auth.js';
+
 // Firebase configuration
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCwSjxi9GIeTaD7ARsrj1ZoSPwB0O45ryg",
@@ -218,6 +221,18 @@ function showMainApp(user) {
   document.getElementById('user-email').textContent = user.email;
   currentUser = user;
   
+  // Update pro status from user object
+  isPro = user.isPro || false;
+  updateProUI();
+  
+  // Store user info in Chrome storage for checkout
+  chrome.storage.local.set({
+    userEmail: user.email,
+    userId: user.uid,
+    isPro: isPro,
+    isAuthenticated: true
+  });
+  
   // Initialize app functionality
   initializeApp();
 }
@@ -276,11 +291,19 @@ function initializeAuthForms() {
 
     setButtonLoading('login-btn', true);
     try {
-      const user = await AuthManager.signIn(email, password);
-      showMainApp(user);
+      await logIn(email, password);
+      // User will be handled by onAuth listener
     } catch (error) {
       console.error('Login error:', error);
-      showError('auth-error', error.message);
+      let errorMessage = error.message;
+      if (errorMessage.includes('user-not-found')) {
+        errorMessage = 'No account found with this email address.';
+      } else if (errorMessage.includes('wrong-password')) {
+        errorMessage = 'Incorrect password.';
+      } else if (errorMessage.includes('invalid-email')) {
+        errorMessage = 'Please enter a valid email address.';
+      }
+      showError('auth-error', errorMessage);
     }
     setButtonLoading('login-btn', false);
   });
@@ -309,19 +332,59 @@ function initializeAuthForms() {
 
     setButtonLoading('signup-btn', true);
     try {
-      const user = await AuthManager.signUp(email, password);
-      showMainApp(user);
+      await signUp(email, password);
+      // User will be handled by onAuth listener
     } catch (error) {
       console.error('Signup error:', error);
-      showError('signup-error', error.message);
+      let errorMessage = error.message;
+      if (errorMessage.includes('email-already-in-use')) {
+        errorMessage = 'An account with this email already exists.';
+      } else if (errorMessage.includes('weak-password')) {
+        errorMessage = 'Password is too weak. Please choose a stronger password.';
+      } else if (errorMessage.includes('invalid-email')) {
+        errorMessage = 'Please enter a valid email address.';
+      }
+      showError('signup-error', errorMessage);
     }
     setButtonLoading('signup-btn', false);
   });
 
   // Logout button
-  document.getElementById('logout-button').addEventListener('click', () => {
-    AuthManager.signOut();
+  document.getElementById('logout-button').addEventListener('click', async () => {
+    try {
+      await logOut();
+      // Clear Chrome storage
+      chrome.storage.local.clear();
+      showAuthScreen();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   });
+}
+
+// Function to refresh user subscription status
+async function refreshUserSubscriptionStatus() {
+  if (!currentUser || !currentUser.uid) return;
+  
+  try {
+    const userStatus = await UserSubscription.getUserStatus(currentUser.uid);
+    if (userStatus) {
+      isPro = userStatus.isPro;
+      currentUser.isPro = isPro;
+      currentUser.subscriptionStatus = userStatus.subscriptionStatus;
+      
+      // Update Chrome storage
+      chrome.storage.local.set({
+        isPro: isPro,
+        subscriptionStatus: userStatus.subscriptionStatus
+      });
+      
+      updateProUI();
+      console.log('Subscription status refreshed:', userStatus);
+    }
+  } catch (error) {
+    console.error('Error refreshing subscription status:', error);
+  }
 }
 
 // App functionality (same as before)
@@ -404,14 +467,14 @@ async function displayContacts(contacts) {
 }
 
 function initializeApp() {
-  // Check pro status
-  checkProStatus();
-  
   // Initialize event listeners
   initializeEventListeners();
   
   // Initialize settings
   initializeSettings();
+  
+  // Refresh subscription status
+  refreshUserSubscriptionStatus();
   
   // Check if we're on a Fiverr page
   chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
@@ -486,6 +549,19 @@ function initializeEventListeners() {
       chrome.tabs.create({ url: chrome.runtime.getURL('checkout.html') });
     }
   });
+
+  // Add refresh subscription status button (for testing)
+  const refreshBtn = document.createElement('button');
+  refreshBtn.textContent = 'Refresh Status';
+  refreshBtn.className = 'shad-button secondary';
+  refreshBtn.style.fontSize = '0.8rem';
+  refreshBtn.style.padding = '5px 10px';
+  refreshBtn.addEventListener('click', refreshUserSubscriptionStatus);
+  
+  const userInfo = document.getElementById('user-info');
+  if (userInfo) {
+    userInfo.appendChild(refreshBtn);
+  }
 }
 
 function initializeSettings() {
@@ -517,27 +593,12 @@ function initializeSettings() {
   });
 }
 
-async function checkProStatus() {
-  return new Promise(resolve => {
-    chrome.storage.local.get(['isPro', 'userEmail', 'userName', 'activatedAt'], function(result) {
-      isPro = result.isPro || false;
-      userInfo = {
-        email: result.userEmail,
-        name: result.userName,
-        activatedAt: result.activatedAt
-      };
-      
-      updateProUI();
-      resolve(isPro);
-    });
-  });
-}
-
 function updateProUI() {
   const proSection = document.getElementById('proSection');
   
   if (isPro) {
     proSection.style.display = 'none';
+    updateStatus(`Pro features activated! Status: ${currentUser?.subscriptionStatus || 'active'}`);
   } else {
     proSection.style.display = 'block';
   }
@@ -568,10 +629,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       break;
       
     case 'PRO_STATUS_UPDATED':
-      if (request.proStatus) {
-        isPro = request.proStatus.isPro;
-        updateProUI();
-        updateStatus('Pro features activated!', false, false);
+      // Refresh subscription status from Firestore
+      refreshUserSubscriptionStatus();
+      break;
+      
+    case 'SUBSCRIPTION_UPDATED':
+      // Handle subscription updates from success page
+      if (request.subscriptionData && currentUser) {
+        UserSubscription.updateSubscriptionStatus(currentUser.uid, request.subscriptionData)
+          .then(() => {
+            refreshUserSubscriptionStatus();
+          })
+          .catch(error => {
+            console.error('Error updating subscription in Firestore:', error);
+          });
       }
       break;
   }
@@ -582,12 +653,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initialize authentication forms
   initializeAuthForms();
   
-  // Check authentication state
-  const user = await AuthManager.checkAuthState();
-  
-  if (user) {
-    showMainApp(user);
-  } else {
-    showAuthScreen();
-  }
+  // Set up authentication state listener
+  onAuth((user) => {
+    if (user) {
+      showMainApp(user);
+    } else {
+      showAuthScreen();
+    }
+  });
 });
