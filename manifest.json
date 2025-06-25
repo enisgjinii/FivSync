@@ -14,7 +14,10 @@
   ],
   "host_permissions": [
     "https://www.fiverr.com/*",
-    "https://www.googleapis.com/*"
+    "https://www.googleapis.com/*",
+    "https://*.firebaseapp.com/*",
+    "https://securetoken.googleapis.com/*",
+    "https://identitytoolkit.googleapis.com/*"
   ],
   "oauth2": {
     "client_id": "1018274925964-v137jc5po2g0ifdj0a4mfljntu910j3k.apps.googleusercontent.com",
@@ -24,7 +27,8 @@
     "default_path": "popup.html"
   },
   "action": {
-    "default_title": "Fiverr Conversation Extractor"
+    "default_title": "Fiverr Conversation Extractor",
+    "default_popup": "popup.html"
   },
   "background": {
     "service_worker": "background.js"
@@ -40,5 +44,8 @@
       "resources": ["success.html", "cancel.html", "success.js", "checkout.html"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
 }

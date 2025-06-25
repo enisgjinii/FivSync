@@ -1,11 +1,10 @@
 import { initializeApp } from "firebase/app";
 import {
     getAuth,
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
     signOut,
     onAuthStateChanged
 } from "firebase/auth";
+import * as firebaseui from 'firebaseui';
 // TODO: Add your Firebase project's configuration here
 const firebaseConfig = {
     apiKey: "AIzaSyCwSjxi9GIeTaD7ARsrj1ZoSPwB0O45ryg",
@@ -18,36 +17,23 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-// --- Authentication Functions ---
-// Sign up new users
-export const signUp = async (email, password) => {
-    try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        // Signed in 
-        const user = userCredential.user;
-        console.log("Signed up:", user);
-        return user;
-    } catch (error) {
-        const errorCode = error.code;
-        const errorMessage = error.message;
-        console.error("Sign up error:", errorCode, errorMessage);
-        throw error;
-    }
-};
-// Sign in existing users
-export const logIn = async (email, password) => {
-    try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        // Signed in 
-        const user = userCredential.user;
-        console.log("Logged in:", user);
-        return user;
-    } catch (error) {
-        const errorCode = error.code;
-        const errorMessage = error.message;
-        console.error("Login error:", errorCode, errorMessage);
-        throw error;
-    }
+// Initialize FirebaseUI
+export const initFirebaseUI = (containerId) => {
+    const ui = firebaseui.auth.AuthUI.getInstance() || new firebaseui.auth.AuthUI(auth);
+    ui.start(containerId, {
+        signInOptions: [
+            EmailAuthProvider.PROVIDER_ID
+        ],
+        signInSuccessUrl: '#', // Stay on the same page
+        callbacks: {
+            signInSuccessWithAuthResult: function(authResult, redirectUrl) {
+                // User successfully signed in.
+                // Return type determines whether we continue the redirect automatically
+                // or whether we leave that to developer to handle.
+                return false;
+            }
+        }
+    });
 };
 // Sign out the current user
 export const logOut = async () => {
@@ -62,4 +48,4 @@ export const logOut = async () => {
 // Observer for auth state changes
 export const onAuth = (callback) => {
     return onAuthStateChanged(auth, callback);
-}; 
+};

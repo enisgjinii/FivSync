@@ -978,20 +978,19 @@ function initializeSettings() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  onAuth(user => {
-    const mainContent = document.getElementById('main-content');
-    const authContainer = document.getElementById('auth-container');
-    const userInfo = document.getElementById('user-info');
-    const userEmail = document.getElementById('user-email');
-    const loginSignupButtons = document.getElementById('login-signup-buttons');
-
+  const mainContent = document.getElementById('main-content');
+  const authContainer = document.getElementById('auth-container');
+  const userInfo = document.getElementById('user-info');
+  const userEmail = document.getElementById('user-email');
+  const authViewsContainer = document.getElementById('auth-views-container');
+  
+  onAuth((user) => {
     if (user) {
       // User is signed in
       mainContent.style.display = 'block';
-      authContainer.style.display = 'block';
+      authContainer.style.display = 'none';
       userInfo.style.display = 'block';
       userEmail.textContent = user.email;
-      loginSignupButtons.style.display = 'none';
       
       // Initialize connection with background script and get pro status
       chrome.runtime.sendMessage({ type: 'INIT_POPUP' }, (response) => {
@@ -1136,8 +1135,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // User is signed out
       mainContent.style.display = 'none';
       authContainer.style.display = 'block';
+      authViewsContainer.style.display = 'block';
       userInfo.style.display = 'none';
-      loginSignupButtons.style.display = 'block';
+      initFirebaseUI('#firebaseui-auth-container');
     }
   });
 
