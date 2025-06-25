@@ -48,10 +48,12 @@ module.exports = async (req, res) => {
 
     try {
       // Extract customer email from request body
-      const { customerEmail } = req.body || {};
+      const { customerEmail, success_url, cancel_url } = req.body || {};
       console.log('Customer email from request:', customerEmail);
+      console.log('Success URL from request:', success_url);
+      console.log('Cancel URL from request:', cancel_url);
       
-      // Extract extension ID from origin header
+      // Extract extension ID from origin header (as a fallback)
       const origin = req.headers.origin || req.headers.referer;
       console.log('Request from origin:', origin);
       
@@ -73,8 +75,8 @@ module.exports = async (req, res) => {
           },
         ],
         mode: 'subscription',
-        success_url: `chrome-extension://${extensionId}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `chrome-extension://${extensionId}/cancel.html`,
+        success_url: success_url || `chrome-extension://${extensionId}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: cancel_url || `chrome-extension://${extensionId}/cancel.html`,
         metadata: {
           source: 'fiverr-extractor-extension',
           timestamp: new Date().toISOString(),

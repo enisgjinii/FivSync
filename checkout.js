@@ -52,10 +52,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const apiUrl = 'https://fiv-sync.vercel.app/api/create-checkout-session';
       console.log('Fetching from:', apiUrl);
       
+      const success_url = chrome.runtime.getURL('success.html') + '?session_id={CHECKOUT_SESSION_ID}';
+      const cancel_url = chrome.runtime.getURL('cancel.html');
+
       const requestBody = {
         source: 'chrome-extension',
         timestamp: new Date().toISOString(),
-        customerEmail: userEmail
+        customerEmail: userEmail,
+        success_url: success_url,
+        cancel_url: cancel_url
       };
       
       console.log('Sending request with user email:', userEmail);
