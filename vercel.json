@@ -9,10 +9,6 @@
     {
       "source": "/",
       "destination": "/api/create-checkout-session"
-    },
-    {
-      "source": "/api/create-checkout-session",
-      "destination": "/api/create-checkout-session"
     }
   ],
   "headers": [
