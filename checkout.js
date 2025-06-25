@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusContainer = document.getElementById('statusContainer');
 
   console.log('Starting checkout process...');
-  statusContainer.textContent = 'Contacting payment server...';
+  statusContainer.textContent = 'Getting user information...';
 
   // Function to show error with retry button
   function showError(message) {
@@ -23,44 +23,70 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Function to get authenticated user's email
+  function getUserEmail() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['userEmail', 'checkoutEmail'], (result) => {
+        // Use checkoutEmail if available, otherwise use userEmail from authentication
+        const email = result.checkoutEmail || result.userEmail;
+        console.log('Retrieved user email for checkout:', email);
+        resolve(email);
+      });
+    });
+  }
+
   // Function to redirect to Stripe Checkout
-  function redirectToStripe() {
-    // Use the direct API endpoint instead of root path
-    const apiUrl = 'https://fiv-sync.vercel.app/api/create-checkout-session';
-    console.log('Fetching from:', apiUrl);
-    
-    fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+  async function redirectToStripe() {
+    try {
+      // Get user email first
+      const userEmail = await getUserEmail();
+      
+      if (!userEmail) {
+        showError('User email not found. Please sign in again.');
+        return;
+      }
+
+      statusContainer.textContent = 'Contacting payment server...';
+      
+      // Use the direct API endpoint instead of root path
+      const apiUrl = 'https://fiv-sync.vercel.app/api/create-checkout-session';
+      console.log('Fetching from:', apiUrl);
+      
+      const requestBody = {
         source: 'chrome-extension',
-        timestamp: new Date().toISOString()
-      })
-    })
-    .then(response => {
+        timestamp: new Date().toISOString(),
+        customerEmail: userEmail
+      };
+      
+      console.log('Sending request with user email:', userEmail);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
       console.log('Received response from server:', response);
       statusContainer.textContent = 'Server response received. Processing...';
       
       if (!response.ok) {
         // Try to get the error details from the response
-        return response.text().then(errorText => {
-          console.error('Server error response:', errorText);
-          let errorData;
-          try {
-            errorData = JSON.parse(errorText);
-          } catch (e) {
-            errorData = { error: { message: errorText || 'Unknown server error' } };
-          }
-          
-          const errorMsg = `Server error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`;
-          throw new Error(errorMsg);
-        });
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { error: { message: errorText || 'Unknown server error' } };
+        }
+        
+        const errorMsg = `Server error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`;
+        throw new Error(errorMsg);
       }
-      return response.json();
-    })
-    .then(session => {
+      
+      const session = await response.json();
       console.log('Checkout session received:', session);
       statusContainer.textContent = 'Session created. Redirecting to Stripe...';
       
@@ -76,8 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         throw new Error('No valid checkout URL or session ID received from server.');
       }
-    })
-    .catch(error => {
+    } catch (error) {
       console.error('Checkout error:', error);
       
       let errorMessage = error.message;
@@ -90,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       showError(`Error: ${errorMessage}`);
-    });
+    }
   }
 
   // Start the checkout process

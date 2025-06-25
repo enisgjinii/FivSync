@@ -47,6 +47,10 @@ module.exports = async (req, res) => {
     }
 
     try {
+      // Extract customer email from request body
+      const { customerEmail } = req.body || {};
+      console.log('Customer email from request:', customerEmail);
+      
       // Extract extension ID from origin header
       const origin = req.headers.origin || req.headers.referer;
       console.log('Request from origin:', origin);
@@ -59,8 +63,8 @@ module.exports = async (req, res) => {
         }
       }
       
-      // Create checkout session with subscription mode for recurring prices
-      const session = await stripe.checkout.sessions.create({
+      // Prepare checkout session configuration
+      const sessionConfig = {
         payment_method_types: ['card'],
         line_items: [
           {
@@ -75,17 +79,28 @@ module.exports = async (req, res) => {
           source: 'fiverr-extractor-extension',
           timestamp: new Date().toISOString(),
           origin: origin || 'unknown',
-          extensionId: extensionId
+          extensionId: extensionId,
+          customerEmail: customerEmail || 'not-provided'
         },
         // Add subscription-specific settings
         subscription_data: {
           metadata: {
             source: 'fiverr-extractor-extension',
             plan: 'pro',
-            extensionId: extensionId
+            extensionId: extensionId,
+            customerEmail: customerEmail || 'not-provided'
           }
         }
-      });
+      };
+
+      // Add customer email if provided
+      if (customerEmail && customerEmail.includes('@')) {
+        sessionConfig.customer_email = customerEmail;
+        console.log('Added customer email to checkout session:', customerEmail);
+      }
+      
+      // Create checkout session with subscription mode for recurring prices
+      const session = await stripe.checkout.sessions.create(sessionConfig);
 
       // Validate session was created successfully
       if (!session || !session.id) {
@@ -95,6 +110,9 @@ module.exports = async (req, res) => {
       console.log('Checkout session created successfully:', session.id);
       console.log('Checkout URL:', session.url);
       console.log('Success URL:', `chrome-extension://${extensionId}/success.html`);
+      if (customerEmail) {
+        console.log('Customer email set for checkout:', customerEmail);
+      }
       
       // Return both sessionId and the checkout URL
       res.status(200).json({ 
