@@ -1,21 +1,4 @@
-import { initializeApp } from "firebase/app";
-import {
-    getAuth,
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    signOut,
-    onAuthStateChanged
-} from "firebase/auth";
-import { 
-    getFirestore, 
-    doc, 
-    setDoc, 
-    getDoc, 
-    updateDoc,
-    serverTimestamp 
-} from "firebase/firestore";
-import * as firebaseui from 'firebaseui';
-// TODO: Add your Firebase project's configuration here
+// Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyCwSjxi9GIeTaD7ARsrj1ZoSPwB0O45ryg",
     authDomain: "fivsync-d4101.firebaseapp.com",
@@ -24,40 +7,30 @@ const firebaseConfig = {
     messagingSenderId: "787439701239",
     appId: "1:787439701239:web:6d73a67f8d0ad43e5497f2"
 };
+
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-// Initialize FirebaseUI
-export const initFirebaseUI = (containerId) => {
-    const ui = firebaseui.auth.AuthUI.getInstance() || new firebaseui.auth.AuthUI(auth);
-    ui.start(containerId, {
-        signInOptions: [
-            EmailAuthProvider.PROVIDER_ID
-        ],
-        signInSuccessUrl: '#', // Stay on the same page
-        callbacks: {
-            signInSuccessWithAuthResult: function(authResult, redirectUrl) {
-                // User successfully signed in.
-                // Return type determines whether we continue the redirect automatically
-                // or whether we leave that to developer to handle.
-                return false;
-            }
-        }
-    });
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// Initialize FirebaseUI (not used in this implementation)
+const initFirebaseUI = (containerId) => {
+    // FirebaseUI implementation would go here if needed
+    console.log('FirebaseUI initialization not implemented');
 };
+
 // User subscription management
-export const UserSubscription = {
+const UserSubscription = {
     // Create user document when they sign up
     async createUser(userId, email) {
         try {
-            const userRef = doc(db, 'users', userId);
-            await setDoc(userRef, {
+            const userRef = db.collection('users').doc(userId);
+            await userRef.set({
                 email: email,
                 isPro: false,
                 subscriptionStatus: 'free',
-                createdAt: serverTimestamp(),
-                lastUpdated: serverTimestamp(),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
                 stripeCustomerId: null,
                 subscriptionId: null
             });
@@ -71,10 +44,10 @@ export const UserSubscription = {
     // Get user subscription status
     async getUserStatus(userId) {
         try {
-            const userRef = doc(db, 'users', userId);
-            const userSnap = await getDoc(userRef);
+            const userRef = db.collection('users').doc(userId);
+            const userSnap = await userRef.get();
             
-            if (userSnap.exists()) {
+            if (userSnap.exists) {
                 const userData = userSnap.data();
                 return {
                     isPro: userData.isPro || false,
@@ -109,13 +82,13 @@ export const UserSubscription = {
     // Update user subscription status (called from webhook or success page)
     async updateSubscriptionStatus(userId, subscriptionData) {
         try {
-            const userRef = doc(db, 'users', userId);
-            await updateDoc(userRef, {
+            const userRef = db.collection('users').doc(userId);
+            await userRef.update({
                 isPro: subscriptionData.isPro,
                 subscriptionStatus: subscriptionData.status,
                 stripeCustomerId: subscriptionData.stripeCustomerId,
                 subscriptionId: subscriptionData.subscriptionId,
-                lastUpdated: serverTimestamp()
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
             });
             console.log('User subscription status updated successfully');
         } catch (error) {
@@ -136,10 +109,11 @@ export const UserSubscription = {
         }
     }
 };
+
 // Sign up a new user
-export const signUp = async (email, password) => {
+const signUp = async (email, password) => {
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
         
         // Create user document in Firestore
@@ -152,10 +126,11 @@ export const signUp = async (email, password) => {
         throw error;
     }
 };
+
 // Sign in an existing user
-export const logIn = async (email, password) => {
+const logIn = async (email, password) => {
     try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
         const user = userCredential.user;
         
         // Ensure user document exists
@@ -171,19 +146,21 @@ export const logIn = async (email, password) => {
         throw error;
     }
 };
+
 // Sign out the current user
-export const logOut = async () => {
+const logOut = async () => {
     try {
-        await signOut(auth);
+        await auth.signOut();
         console.log("User signed out successfully");
     } catch (error) {
         console.error("Sign out error:", error);
         throw error;
     }
 };
+
 // Listen for authentication state changes
-export const onAuth = (callback) => {
-    return onAuthStateChanged(auth, async (user) => {
+const onAuth = (callback) => {
+    return auth.onAuthStateChanged(async (user) => {
         if (user) {
             // Get user subscription status from Firestore
             try {
@@ -202,3 +179,10 @@ export const onAuth = (callback) => {
         }
     });
 };
+
+// Make functions available globally
+window.onAuth = onAuth;
+window.signUp = signUp;
+window.logIn = logIn;
+window.logOut = logOut;
+window.UserSubscription = UserSubscription; 

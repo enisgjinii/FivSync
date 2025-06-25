@@ -1,5 +1,4 @@
-// Import Firebase functions
-import { onAuth, logOut, signUp, logIn, UserSubscription } from './firebase-auth.js';
+// Firebase functions are available globally via firebase-auth.js
 
 // Global variables
 let isPro = false;
@@ -275,7 +274,7 @@ function initializeApp() {
   
   // Refresh subscription status
   refreshUserSubscriptionStatus();
-  
+
   // Check if we're on a Fiverr page
   chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
     const currentUrl = tabs[0].url;
@@ -318,8 +317,8 @@ function initializeEventListeners() {
       setButtonLoading('extractBtn', true);
       
       chrome.storage.local.set({ currentUsername: username }, () => {
-        chrome.runtime.sendMessage({ type: 'EXTRACT_CONVERSATION' });
-        updateStatus(`Extracting conversation with ${username}...`, false, true);
+          chrome.runtime.sendMessage({ type: 'EXTRACT_CONVERSATION' });
+          updateStatus(`Extracting conversation with ${username}...`, false, true);
       });
     });
   });
@@ -345,7 +344,7 @@ function initializeEventListeners() {
       chrome.storage.local.set({ checkoutEmail: currentUser.email }, () => {
         chrome.tabs.create({ url: chrome.runtime.getURL('checkout.html') });
       });
-    } else {
+      } else {
       chrome.tabs.create({ url: chrome.runtime.getURL('checkout.html') });
     }
   });
