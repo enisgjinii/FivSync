@@ -3,7 +3,11 @@ let activeTabsWithContentScript = new Set();
 
 // Open the side panel on action click
 chrome.action.onClicked.addListener((tab) => {
-  chrome.sidePanel.open({ windowId: tab.windowId });
+  if (tab && tab.windowId) {
+    chrome.sidePanel.open({ windowId: tab.windowId }).catch(err => {
+      console.error('Failed to open side panel:', err);
+    });
+  }
 });
 
 // Track ongoing processes
@@ -14,40 +18,49 @@ let ongoingProcesses = {
 
 // Listen for navigation to Fiverr pages
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'complete' && tab.url?.includes('fiverr.com')) {
+  if (changeInfo.status === 'complete' && tab && tab.url && tab.url.includes('fiverr.com')) {
     // Inject content script
     chrome.scripting.executeScript({
       target: { tabId: tabId },
       files: ['content.js']
     }).then(() => {
       activeTabsWithContentScript.add(tabId);
-    }).catch(err => console.error('Failed to inject content script:', err));
+    }).catch(err => {
+      console.error('Failed to inject content script:', err);
+    });
   }
 });
 
 // Remove tab from tracking when closed
 chrome.tabs.onRemoved.addListener((tabId) => {
-  activeTabsWithContentScript.delete(tabId);
-  ongoingProcesses.contacts.delete(tabId);
-  ongoingProcesses.conversations.delete(tabId);
+  if (tabId) {
+    activeTabsWithContentScript.delete(tabId);
+    ongoingProcesses.contacts.delete(tabId);
+    ongoingProcesses.conversations.delete(tabId);
+  }
 });
 
 // Listen for messages from popup or content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  const tabId = sender.tab ? sender.tab.id : (request.tabId || null);
+  if (!request || !request.type) return;
+  
+  const tabId = sender && sender.tab ? sender.tab.id : (request.tabId || null);
 
   if (request.type === 'INIT_POPUP') {
     // Inject content script when popup is opened
     chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-      const tab = tabs[0];
-      if (tab.url.includes('fiverr.com')) {
-        try {
-          await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: ['content.js']
-          });
-        } catch (error) {
-          console.error('Failed to inject content script:', error);
+      if (tabs && tabs.length > 0) {
+        const tab = tabs[0];
+        if (tab && tab.url && tab.url.includes('fiverr.com')) {
+          try {
+            await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              files: ['content.js']
+            });
+            activeTabsWithContentScript.add(tab.id);
+          } catch (error) {
+            console.error('Failed to inject content script:', error);
+          }
         }
       }
     });
@@ -59,7 +72,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const processType = request.type === 'CONTACTS_PROGRESS' ? 'contacts' : 'conversations';
       ongoingProcesses[processType].set(tabId, {
         status: 'running',
-        progress: request.message,
+        progress: request.message || 'Processing...',
         timestamp: Date.now()
       });
     }
@@ -70,7 +83,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const processType = request.type === 'CONTACTS_FETCHED' ? 'contacts' : 'conversations';
       ongoingProcesses[processType].set(tabId, {
         status: 'completed',
-        message: request.message,
+        message: request.message || 'Completed',
         timestamp: Date.now()
       });
     }
@@ -80,7 +93,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (tabId) {
       ongoingProcesses.conversations.set(tabId, {
         status: 'error',
-        error: request.error,
+        error: request.error || 'Unknown error',
         timestamp: Date.now()
       });
     }
@@ -100,25 +113,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Forward process requests to content script
   else if (['EXTRACT_CONVERSATION', 'FETCH_ALL_CONTACTS'].includes(request.type)) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const tab = tabs[0];
-      if (tab.url.includes('fiverr.com')) {
-        // Initialize process tracking
-        const processType = request.type === 'FETCH_ALL_CONTACTS' ? 'contacts' : 'conversations';
-        ongoingProcesses[processType].set(tab.id, {
-          status: 'starting',
-          timestamp: Date.now()
-        });
-        
-        chrome.tabs.sendMessage(tab.id, { ...request, tabId: tab.id });
-      }
-    });
-  }
-  // Forward other messages to content script
-  else if (['EXTRACT_CONVERSATION', 'FETCH_ALL_CONTACTS'].includes(request.type)) {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const tab = tabs[0];
-      if (tab.url.includes('fiverr.com')) {
-        chrome.tabs.sendMessage(tab.id, request);
+      if (tabs && tabs.length > 0) {
+        const tab = tabs[0];
+        if (tab && tab.url && tab.url.includes('fiverr.com')) {
+          // Initialize process tracking
+          const processType = request.type === 'FETCH_ALL_CONTACTS' ? 'contacts' : 'conversations';
+          ongoingProcesses[processType].set(tab.id, {
+            status: 'starting',
+            timestamp: Date.now()
+          });
+          
+          chrome.tabs.sendMessage(tab.id, { ...request, tabId: tab.id }).catch(err => {
+            console.error('Failed to send message to content script:', err);
+            ongoingProcesses[processType].set(tab.id, {
+              status: 'error',
+              error: 'Failed to communicate with content script',
+              timestamp: Date.now()
+            });
+          });
+        } else {
+          console.error('Not on a Fiverr page');
+        }
       }
     });
   }
