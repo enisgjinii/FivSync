@@ -82,7 +82,7 @@ body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   padding: 1.5rem;
-  width: 380px;
+  min-width: 380px;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -675,6 +675,23 @@ input:checked + .slider:before {
   opacity: 0.9;
 }
 
+/* Pro Card */
+.pro-card {
+  background: linear-gradient(135deg, hsl(var(--orange)), hsl(var(--orange) / 0.8));
+  color: hsl(var(--white));
+  text-align: center;
+}
+
+.pro-card h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.pro-card p {
+  margin: 0.5rem 0 1rem;
+  opacity: 0.9;
+}
+
 /* Modal */
 .settings-modal {
   display: none;
@@ -934,4 +951,15 @@ input:checked + .slider:before {
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
+}
+
+.logo-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logo {
+  width: 24px;
+  height: 24px;
 } 

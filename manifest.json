@@ -28,5 +28,8 @@
       "matches": ["https://www.fiverr.com/*"],
       "js": ["content.js"]
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' https://js.stripe.com; object-src 'self'"
+  }
 }

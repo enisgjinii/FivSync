@@ -282,6 +282,28 @@ async function exportMetadata() {
   });
 }
 
+// Convert conversation to TXT
+async function convertToTxt(data) {
+  let text = `Conversation with ${data.username}\n\n`;
+  for (const message of data.messages) {
+    const timestamp = await formatDate(message.createdAt);
+    text += `[${timestamp}] ${message.sender}:\n${message.body}\n\n`;
+  }
+  return text;
+}
+
+// Convert conversation to CSV
+async function convertToCsv(data) {
+  let csv = 'MessageID,Sender,Timestamp,Body,Attachments\n';
+  for (const message of data.messages) {
+    const timestamp = await formatDate(message.createdAt);
+    const body = `"${message.body.replace(/"/g, '""')}"`;
+    const attachments = message.attachments.map(a => a.filename).join(', ');
+    csv += `${message.id},${message.sender},${timestamp},${body},"${attachments}"\n`;
+  }
+  return csv;
+}
+
 // NEW FEATURE 2: Conversation Statistics
 function updateStatistics(contacts) {
   const statsCard = document.getElementById('statsCard');
@@ -327,6 +349,48 @@ function updateStatistics(contacts) {
   
   // Update most active contact
   mostActiveContact.textContent = mostActive.length > 8 ? mostActive.substring(0, 8) + '...' : mostActive;
+
+  // TXT export button handler
+  document.getElementById('exportTxtBtn').addEventListener('click', () => {
+    if (!isPro) {
+      document.getElementById('upgradeBtn').click();
+      return;
+    }
+    chrome.storage.local.get(['conversationData', 'currentUsername'], async function(result) {
+      if (result.conversationData) {
+        const txtContent = await convertToTxt(result.conversationData);
+        const blob = new Blob([txtContent], { type: 'text/plain' });
+        chrome.downloads.download({
+          url: URL.createObjectURL(blob),
+          filename: `${result.currentUsername}/conversations/fiverr_conversation_${result.currentUsername}_${new Date().toISOString().split('T')[0]}.txt`,
+          saveAs: false
+        });
+      } else {
+        updateStatus('Please extract the conversation first.', true);
+      }
+    });
+  });
+
+  // CSV export button handler
+  document.getElementById('exportCsvBtn').addEventListener('click', () => {
+    if (!isPro) {
+      document.getElementById('upgradeBtn').click();
+      return;
+    }
+    chrome.storage.local.get(['conversationData', 'currentUsername'], async function(result) {
+      if (result.conversationData) {
+        const csvContent = await convertToCsv(result.conversationData);
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        chrome.downloads.download({
+          url: URL.createObjectURL(blob),
+          filename: `${result.currentUsername}/conversations/fiverr_conversation_${result.currentUsername}_${new Date().toISOString().split('T')[0]}.csv`,
+          saveAs: false
+        });
+      } else {
+        updateStatus('Please extract the conversation first.', true);
+      }
+    });
+  });
 }
 
 // Helper function to animate numbers
@@ -546,6 +610,79 @@ function stopStatusChecking() {
     }
 }
 
+// --- Pro Plan & License ---
+let isPro = false;
+
+async function checkLicenseStatus() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('licenseKey', function(result) {
+      if (result.licenseKey === 'PRO-USER') { // Mock validation
+        isPro = true;
+        document.getElementById('proSection').style.display = 'none';
+        document.getElementById('licenseStatus').textContent = 'Status: Pro';
+      } else {
+        isPro = false;
+        document.getElementById('proSection').style.display = 'block';
+        document.getElementById('licenseStatus').textContent = 'Status: Free';
+      }
+      toggleProFeatures(isPro);
+      resolve(isPro);
+    });
+  });
+}
+
+function toggleProFeatures(isPro) {
+  const proButtons = document.querySelectorAll('.pro-feature'); // Add this class to pro buttons
+  if (isPro) {
+    proButtons.forEach(btn => btn.disabled = false);
+  } else {
+    proButtons.forEach(btn => btn.disabled = true);
+  }
+}
+
+function activateLicense() {
+  const licenseKey = document.getElementById('licenseKey').value;
+  if (!licenseKey) {
+    document.getElementById('licenseStatus').textContent = 'Please enter a key.';
+    return;
+  }
+  chrome.storage.local.set({ licenseKey: licenseKey }, () => {
+    checkLicenseStatus();
+  });
+}
+
+// --- Stripe ---
+function initializeStripe() {
+  const stripe = Stripe('pk_test_51Rdot52cWT3pj6Lz2TimjiPDbgpfOC1BBpwqaPSLpAlf2sOtTLaCcrQN2J72KDPLH7md8vUgneCi5BoledSJftw900ptMbSM9W');
+  const upgradeBtn = document.getElementById('upgradeBtn');
+  upgradeBtn.addEventListener('click', () => {
+    // Replace with your actual Stripe Price ID
+    const priceId = 'price_1RdoyZ2cWT3pj6Lz3uDiiKaP'; 
+    
+    updateStatus('Redirecting to checkout...', false, true);
+
+    // When the customer clicks on the button, redirect them to Checkout.
+    // NOTE: A backend is required to create a Checkout Session.
+    // The following is a CLIENT-SIDE ONLY example and will not work without a backend.
+    stripe.redirectToCheckout({
+        lineItems: [{
+            price: priceId,
+            quantity: 1,
+        }],
+        mode: 'payment',
+        // IMPORTANT: Replace these with your actual success and cancel URLs.
+        successUrl: 'https://example.com/success',
+        cancelUrl: 'https://example.com/cancel',
+    }).then(function (result) {
+        if (result.error) {
+            // If `redirectToCheckout` fails due to a browser or network
+            // error, display the localized error message to your customer.
+            updateStatus(result.error.message, true);
+        }
+    });
+  });
+}
+
 // Settings modal handlers
 function initializeSettings() {
   const settingsBtn = document.getElementById('settingsBtn');
@@ -556,6 +693,9 @@ function initializeSettings() {
   const dateFormatSelect = document.getElementById('dateFormat');
   const themeToggle = document.getElementById('theme-toggle');
   const themeLabel = document.getElementById('theme-label');
+  const activateLicenseBtn = document.getElementById('activateLicenseBtn');
+
+  activateLicenseBtn.addEventListener('click', activateLicense);
 
   // --- Theme Handling ---
   function applyTheme(isDark) {
@@ -713,6 +853,19 @@ function initializeSettings() {
 
       hideModal();
     });
+  });
+
+  // Check license status
+  checkLicenseStatus();
+
+  // Initialize Stripe
+  initializeStripe();
+  
+  // Initialize attachments button if there's stored conversation data
+  chrome.storage.local.get(['conversationData'], function(result) {
+    if (result.conversationData) {
+      handleConversationExtracted(result.conversationData);
+    }
   });
 }
 
@@ -926,13 +1079,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Start status checking
   startStatusChecking();
   
-  // Initialize attachments button if there's stored conversation data
-  chrome.storage.local.get(['conversationData'], function(result) {
-    if (result.conversationData) {
-      handleConversationExtracted(result.conversationData);
-    }
-  });
-
   // Initialize settings
   initializeSettings();
 });
