@@ -339,14 +339,31 @@ function initializeEventListeners() {
     });
   });
 
+  document.getElementById('downloadJsonBtn').addEventListener('click', () => {
+    chrome.storage.local.get(['jsonContent', 'currentUsername'], function(result) {
+        if (result.jsonContent && result.currentUsername) {
+            const blob = new Blob([result.jsonContent], { type: 'application/json' });
+            chrome.downloads.download({
+                url: URL.createObjectURL(blob),
+                filename: `${result.currentUsername}/conversations/fiverr_conversation_${result.currentUsername}_${new Date().toISOString().split('T')[0]}.json`,
+                saveAs: false
+            });
+        } else {
+            updateStatus('Please extract the conversation first.', true);
+        }
+    });
+  });
+
   document.getElementById('upgradeBtn').addEventListener('click', () => {
-    if (currentUser && currentUser.email) {
-      chrome.storage.local.set({ checkoutEmail: currentUser.email }, () => {
-        chrome.tabs.create({ url: chrome.runtime.getURL('checkout.html') });
-      });
-      } else {
-      chrome.tabs.create({ url: chrome.runtime.getURL('checkout.html') });
-    }
+    // Get email from storage to ensure it's available for checkout
+    chrome.storage.local.get('userEmail', (result) => {
+        if (result && result.userEmail) {
+            chrome.tabs.create({ url: chrome.runtime.getURL('checkout.html') });
+        } else {
+            console.error("Upgrade error: No user email found in storage.");
+            updateStatus("Could not find user information. Please log in again.", true);
+        }
+    });
   });
 
   // Add refresh subscription status button (for testing)
