@@ -34,8 +34,15 @@ async function formatDate(timestamp) {
 // Update status message in popup
 function updateStatus(message, isError = false, isProgress = false) {
   const statusDiv = document.getElementById('status');
-  statusDiv.textContent = message;
+  const icon = isError 
+    ? '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>'
+    : isProgress 
+      ? '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>'
+      : '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  
+  statusDiv.innerHTML = `${icon}<span>${message}</span>`;
   statusDiv.className = `status ${isError ? 'error' : isProgress ? 'progress' : 'success'}`;
+  statusDiv.style.display = 'flex';
 }
 
 // Format file size
@@ -49,20 +56,26 @@ function formatFileSize(bytes) {
 // Add log entry
 function addLogEntry(message, isError = false) {
   const progressLog = document.getElementById('progressLog');
-  const logEntry = document.createElement('div');
-  logEntry.className = `log-entry${isError ? ' error' : ''}`;
-  logEntry.textContent = message;
-  progressLog.appendChild(logEntry);
-  progressLog.scrollTop = progressLog.scrollHeight;
+  const progressSection = document.getElementById('progressSection');
+  
+  if (progressLog && progressSection) {
+    progressSection.style.display = 'block'; // Ensure progress section is visible
+    const logEntry = document.createElement('div');
+    logEntry.className = `log-entry${isError ? ' error' : ''}`;
+    logEntry.textContent = message;
+    progressLog.appendChild(logEntry);
+    progressLog.scrollTop = progressLog.scrollHeight;
+  }
 }
 
 // Update contact counter
 function updateContactCounter(count) {
-  const contactCount = document.getElementById('contactCount');
   const progressCounter = document.getElementById('progressCounter');
-  if (contactCount && progressCounter) {
-    contactCount.textContent = count;
-    progressCounter.style.display = 'block';
+  const progressSection = document.getElementById('progressSection');
+  
+  if (progressCounter && progressSection) {
+    progressCounter.innerHTML = `Total Contacts: <span id="contactCount">${count}</span>`;
+    progressSection.style.display = 'block';
     
     // Update storage with latest count
     chrome.storage.local.set({ lastContactCount: count });
@@ -228,6 +241,47 @@ async function exportAllConversations(contacts) {
   updateStatus(`Successfully exported ${allConversations.length} conversations!`);
 }
 
+// NEW FEATURE 3: Export Timestamps and Metadata
+async function exportMetadata() {
+  chrome.storage.local.get(['conversationData', 'currentUsername'], async function(result) {
+    if (!result.conversationData || !result.currentUsername) {
+      updateStatus('Please extract a conversation first.', true);
+      return;
+    }
+
+    const { messages, username } = result.conversationData;
+    const otherUsername = messages[0]?.sender === username ? messages[0]?.recipient : messages[0]?.sender;
+
+    const metadata = {
+      export_info: {
+        extractor_version: '2.0',
+        export_date: new Date().toISOString(),
+        conversation_with: otherUsername,
+        current_user: result.currentUsername,
+      },
+      message_metadata: await Promise.all(messages.map(async msg => ({
+        message_id: msg.id,
+        sender: msg.sender,
+        created_at_unix: msg.createdAt,
+        created_at_formatted: await formatDate(msg.createdAt),
+        message_length_chars: msg.body?.length || 0,
+        has_attachments: (msg.attachments?.length || 0) > 0,
+        attachment_count: msg.attachments?.length || 0,
+        replied_to_message_id: msg.repliedToMessage?.id || null
+      })))
+    };
+
+    const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
+    chrome.downloads.download({
+      url: URL.createObjectURL(blob),
+      filename: `${result.currentUsername}/metadata/fiverr_metadata_${otherUsername}_${new Date().toISOString().split('T')[0]}.json`,
+      saveAs: false
+    });
+
+    updateStatus('Timestamps and metadata exported successfully!');
+  });
+}
+
 // NEW FEATURE 2: Conversation Statistics
 function updateStatistics(contacts) {
   const statsCard = document.getElementById('statsCard');
@@ -309,9 +363,17 @@ function setButtonLoading(buttonId, isLoading) {
   if (isLoading) {
     button.classList.add('loading');
     button.disabled = true;
+    // Optionally hide text and show spinner, then restore
+    button.setAttribute('data-original-text', button.innerHTML);
+    button.innerHTML = '<span class="spinner"></span>';
   } else {
     button.classList.remove('loading');
     button.disabled = false;
+    // Restore original text
+    if (button.hasAttribute('data-original-text')) {
+      button.innerHTML = button.getAttribute('data-original-text');
+      button.removeAttribute('data-original-text');
+    }
   }
 }
 
@@ -329,8 +391,8 @@ function loadStoredContacts() {
         const lastFetch = new Date(result.lastContactsFetch).toLocaleString();
         const progressCounter = document.getElementById('progressCounter');
         if (progressCounter) {
-          progressCounter.style.display = 'block';
           progressCounter.innerHTML = `Total Contacts: <span id="contactCount">${result.allContacts.length}</span><br>Last updated: ${lastFetch}`;
+          document.getElementById('progressSection').style.display = 'block';
         }
       }
     }
@@ -342,8 +404,8 @@ function updateLastFetchTime() {
     const progressCounter = document.getElementById('progressCounter');
     if (progressCounter) {
         const lastFetch = new Date().toLocaleString();
-        progressCounter.style.display = 'block';
         progressCounter.innerHTML = `Total Contacts: <span id="contactCount">${document.getElementById('contactCount')?.textContent || '0'}</span><br>Last updated: ${lastFetch}`;
+        document.getElementById('progressSection').style.display = 'block';
     }
 }
 
@@ -395,12 +457,12 @@ function handleConversationExtracted(data, message) {
         const attachmentsDiv = document.getElementById('attachments');
         const isVisible = attachmentsDiv.style.display === 'block';
         attachmentsDiv.style.display = isVisible ? 'none' : 'block';
-        viewAttachmentsBtn.textContent = isVisible 
-            ? `📎 View Attachments (${totalAttachments})` 
-            : `📎 Hide Attachments (${totalAttachments})`;
+        viewAttachmentsBtn.innerHTML = isVisible 
+            ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 16.2a2 2 0 0 1-2.83-2.83l8.49-8.49"></path></svg><span>View Attachments (${totalAttachments})</span>' 
+            : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 16.2a2 2 0 0 1-2.83-2.83l8.49-8.49"></path></svg><span>Hide Attachments (${totalAttachments})</span>';
       };
       // Set initial button text with attachment count
-      viewAttachmentsBtn.textContent = `📎 View Attachments (${totalAttachments})`;
+      viewAttachmentsBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 16.2a2 2 0 0 1-2.83-2.83l8.49-8.49"></path></svg><span>View Attachments (${totalAttachments})</span>';
     } else {
       viewAttachmentsBtn.style.display = 'none';
     }
@@ -413,44 +475,54 @@ let statusCheckInterval = null;
 function updateUIWithStatus(status) {
     const contactsStatus = status?.contacts;
     const conversationStatus = status?.conversations;
+    const progressSection = document.getElementById('progressSection');
 
     // Update contacts UI
     if (contactsStatus) {
-        const contactsButton = document.getElementById('fetchContactsButton');
+        const fetchContactsBtn = document.getElementById('fetchContactsBtn');
         const contactsProgress = document.getElementById('contactsProgress');
         
         if (contactsStatus.status === 'running') {
-            contactsButton.disabled = true;
+            setButtonLoading('fetchContactsBtn', true);
             contactsProgress.textContent = contactsStatus.progress || 'Processing...';
             contactsProgress.style.display = 'block';
+            progressSection.style.display = 'block';
         } else if (contactsStatus.status === 'completed') {
-            contactsButton.disabled = false;
+            setButtonLoading('fetchContactsBtn', false);
             contactsProgress.textContent = contactsStatus.message || 'Completed!';
             setTimeout(() => {
                 contactsProgress.style.display = 'none';
+                if (!conversationStatus || conversationStatus.status !== 'running') {
+                    progressSection.style.display = 'none'; // Hide if no other progress
+                }
             }, 3000);
         }
     }
 
     // Update conversation UI
     if (conversationStatus) {
-        const extractButton = document.getElementById('extractButton');
+        const extractBtn = document.getElementById('extractBtn');
         const extractionProgress = document.getElementById('extractionProgress');
         
         if (conversationStatus.status === 'running') {
-            extractButton.disabled = true;
+            setButtonLoading('extractBtn', true);
             extractionProgress.textContent = conversationStatus.progress || 'Processing...';
             extractionProgress.style.display = 'block';
+            progressSection.style.display = 'block';
         } else if (conversationStatus.status === 'completed') {
-            extractButton.disabled = false;
+            setButtonLoading('extractBtn', false);
             extractionProgress.textContent = conversationStatus.message || 'Completed!';
             setTimeout(() => {
                 extractionProgress.style.display = 'none';
+                if (!contactsStatus || contactsStatus.status !== 'running') {
+                    progressSection.style.display = 'none'; // Hide if no other progress
+                }
             }, 3000);
         } else if (conversationStatus.status === 'error') {
-            extractButton.disabled = false;
+            setButtonLoading('extractBtn', false);
             extractionProgress.textContent = `Error: ${conversationStatus.error}`;
             extractionProgress.style.display = 'block';
+            progressSection.style.display = 'block';
         }
     }
 }
@@ -743,10 +815,13 @@ document.addEventListener('DOMContentLoaded', () => {
       setButtonLoading('fetchContactsBtn', true);
       
       // Reset UI
-      document.getElementById('progressLog').style.display = 'block';
-      document.getElementById('progressLog').innerHTML = '';
-      document.getElementById('progressCounter').style.display = 'block';
-      document.getElementById('contactCount').textContent = '0';
+      const progressLog = document.getElementById('progressLog');
+      const progressCounter = document.getElementById('progressCounter');
+      const progressSection = document.getElementById('progressSection');
+
+      progressLog.innerHTML = '';
+      progressCounter.innerHTML = 'Total Contacts: <span id="contactCount">0</span>';
+      progressSection.style.display = 'block';
       
       updateStatus('Fetching all contacts...', false, true);
       chrome.runtime.sendMessage({ type: 'FETCH_ALL_CONTACTS' });
@@ -840,6 +915,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Export metadata button click handler
+  document.getElementById('exportMetadataBtn').addEventListener('click', () => {
+    exportMetadata();
+  });
+
   // Load stored contacts when popup opens
   loadStoredContacts();
   
@@ -862,6 +942,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.type) {
     case 'CONTACTS_PROGRESS':
       updateStatus(request.message, request.isError, true);
+      addLogEntry(request.message);
       if (request.totalContacts) {
         updateContactCounter(request.totalContacts);
       }
@@ -870,6 +951,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'CONTACTS_FETCHED':
       setButtonLoading('fetchContactsBtn', false);
       updateStatus(request.message);
+      addLogEntry(request.message);
       if (request.data) {
         displayContacts(request.data).catch(console.error);
         updateContactCounter(request.data.length);
@@ -880,11 +962,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'CONVERSATION_EXTRACTED':
       setButtonLoading('extractBtn', false);
       handleConversationExtracted(request.data, request.message);
+      addLogEntry(request.message);
       break;
     
     case 'EXTRACTION_ERROR':
       setButtonLoading('extractBtn', false);
       updateStatus(request.error, true);
+      addLogEntry(request.error, true);
       break;
   }
 });
