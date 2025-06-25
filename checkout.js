@@ -2,8 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const stripe = Stripe('pk_test_51Rdot52cWT3pj6Lz2TimjiPDbgpfOC1BBpwqaPSLpAlf2sOtTLaCcrQN2J72KDPLH7md8vUgneCi5BoledSJftw900ptMbSM9W');
 
   // Fetch the Checkout Session ID from your backend
-  // IMPORTANT: Replace this URL with the URL of your backend endpoint
-  fetch('https://YOUR_PROJECT_NAME.vercel.app/api/create-checkout-session', {
+  fetch('https://fiv-sync-p1ag593u1-enisenisnisis-projects.vercel.app/api/create-checkout-session', {
     method: 'POST',
   })
   .then(function(response) {
