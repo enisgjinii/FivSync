@@ -1,0 +1,17 @@
+# Environment Variables Configuration
+# Copy these to your .env file or Vercel environment variables
+
+# Email Configuration for Waitlist
+EMAIL_USER=egjini17@gmail.com
+EMAIL_PASSWORD=yior nsuo nfjb vrge
+
+# Stripe Configuration (if needed)
+STRIPE_SECRET_KEY=your_stripe_secret_key_here
+
+# Other Environment Variables
+NODE_ENV=development
+
+# Instructions:
+# 1. For local development: Create a .env file with these variables
+# 2. For Vercel deployment: Add these as environment variables in your Vercel dashboard
+# 3. Make sure to keep your app password secure and never commit it to version control 
