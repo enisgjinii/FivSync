@@ -49,50 +49,11 @@ module.exports = async (req, res) => {
     try {
       // Extract customer email from request body
       const { customerEmail, success_url, cancel_url } = req.body || {};
-      console.log('Customer email from request:', customerEmail);
-      console.log('Success URL from request:', success_url);
-      console.log('Cancel URL from request:', cancel_url);
-      
-      // Log the exact URL format being processed
-      if (success_url) {
-        console.log('Success URL breakdown:');
-        console.log('- Full URL:', success_url);
-        console.log('- Protocol:', success_url.split('://')[0]);
-        
-        // Extract extension ID from URL parameters if it's an HTTPS URL
-        if (success_url.startsWith('https://')) {
-          const urlParams = new URL(success_url).searchParams;
-          const extensionIdFromUrl = urlParams.get('extension_id');
-          console.log('- Extension ID from URL:', extensionIdFromUrl);
-        } else {
-          console.log('- Extension ID:', success_url.match(/extension:\/\/([^\/]+)/)?.[1]);
-          console.log('- Path:', success_url.split('extension://')[1]?.split('?')[0]);
-        }
-      }
-      
-      // Extract extension ID from origin header or URL parameters
       const origin = req.headers.origin || req.headers.referer;
-      console.log('Request from origin:', origin);
-      
+
       let extensionId = 'glhngllgakepoelafphbpjgdnknloikj'; // Default to your extension ID
-      
-      // Try to get extension ID from success URL first
-      if (success_url && success_url.startsWith('https://')) {
-        try {
-          const urlParams = new URL(success_url).searchParams;
-          const extensionIdFromUrl = urlParams.get('extension_id');
-          if (extensionIdFromUrl) {
-            extensionId = extensionIdFromUrl;
-            console.log('Extracted extension ID from success URL:', extensionId);
-          }
-        } catch (e) {
-          console.log('Could not parse extension ID from success URL:', e);
-        }
-      } else if (origin && origin.includes('extension://')) {
-        const match = origin.match(/extension:\/\/([^\/]+)/);
-        if (match) {
-          extensionId = match[1];
-        }
+      if (origin && origin.startsWith('chrome-extension://')) {
+        extensionId = origin.split('/')[2];
       }
       
       // Prepare checkout session configuration
@@ -105,8 +66,8 @@ module.exports = async (req, res) => {
           },
         ],
         mode: 'subscription',
-        success_url: success_url || `https://fiv-sync.vercel.app/success.html?session_id={CHECKOUT_SESSION_ID}&extension_id=${extensionId}`,
-        cancel_url: cancel_url || `https://fiv-sync.vercel.app/cancel.html?extension_id=${extensionId}`,
+        success_url: success_url,
+        cancel_url: cancel_url,
         metadata: {
           source: 'fiverr-extractor-extension',
           timestamp: new Date().toISOString(),
@@ -127,7 +88,7 @@ module.exports = async (req, res) => {
 
       // Simple validation for the URLs
       if (!sessionConfig.success_url.startsWith('chrome-extension://') || !sessionConfig.cancel_url.startsWith('chrome-extension://')) {
-          console.error('Invalid URL format. URLs must be chrome-extension://.');
+          console.error('Invalid URL format. URLs must start with chrome-extension://');
           return res.status(500).json({ 
             error: { message: 'Server configuration error - invalid URL format.' } 
           });
