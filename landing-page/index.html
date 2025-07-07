@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fiverr Conversation Extractor - Backup Your Conversations</title>
+    <meta name="description" content="Extract, backup, and analyze your Fiverr conversations with PDF/Excel exports, bulk downloads, and conversation analytics. Never lose important client messages again!">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <span>Fiverr Extractor</span>
+            </div>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#contact">Contact</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title">
+                    Never Lose Your Fiverr Conversations Again
+                </h1>
+                <p class="hero-subtitle">
+                    Extract, backup, and analyze your Fiverr conversations with powerful export tools. 
+                    Keep your client communications safe and organized.
+                </p>
+                <div class="hero-buttons">
+                    <button class="btn btn-primary" onclick="scrollToSection('features')">
+                        Learn More
+                    </button>
+                    <button class="btn btn-secondary" onclick="scrollToSection('pricing')">
+                        View Pricing
+                    </button>
+                </div>
+            </div>
+            <div class="hero-image">
+                <div class="mockup">
+                    <div class="mockup-header">
+                        <div class="mockup-dots">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                    <div class="mockup-content">
+                        <div class="conversation-item">
+                            <div class="avatar"></div>
+                            <div class="message">
+                                <div class="message-header">
+                                    <span class="name">Client Name</span>
+                                    <span class="time">2:30 PM</span>
+                                </div>
+                                <div class="message-text">Hi! I loved your work on the previous project...</div>
+                            </div>
+                        </div>
+                        <div class="conversation-item own">
+                            <div class="message">
+                                <div class="message-header">
+                                    <span class="name">You</span>
+                                    <span class="time">2:32 PM</span>
+                                </div>
+                                <div class="message-text">Thank you! I'm glad you liked it. What can I help you with?</div>
+                            </div>
+                            <div class="avatar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>Powerful Features for Freelancers</h2>
+                <p>Everything you need to manage and backup your Fiverr conversations</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 1 2-2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14,2 14,8 20,8"></polyline>
+                        </svg>
+                    </div>
+                    <h3>Multiple Export Formats</h3>
+                    <p>Export your conversations as PDF, Excel, Markdown, JSON, or CSV files. Choose the format that works best for your needs.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7,10 12,15 17,10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                    </div>
+                    <h3>Bulk Export</h3>
+                    <p>Export all your conversations at once with our bulk export feature. Save time and keep everything organized.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3v18h18"></path>
+                            <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+                        </svg>
+                    </div>
+                    <h3>Conversation Analytics</h3>
+                    <p>Get insights into your conversations with detailed analytics. Track message patterns and client interactions.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 16.2a2 2 0 0 1-2.83-2.83l7.07-7.07"></path>
+                        </svg>
+                    </div>
+                    <h3>Attachment Management</h3>
+                    <p>View and download all attachments from your conversations. Keep files organized and accessible.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12,6 12,12 16,14"></polyline>
+                        </svg>
+                    </div>
+                    <h3>Privacy First</h3>
+                    <p>All processing happens locally in your browser. Your conversations never leave your device and stay completely private.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                        </svg>
+                    </div>
+                    <h3>Easy to Use</h3>
+                    <p>Simple Chrome extension that works seamlessly with your existing Fiverr account. No complex setup required.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="pricing">
+        <div class="container">
+            <div class="section-header">
+                <h2>Simple Pricing</h2>
+                <p>Choose the plan that works best for you</p>
+            </div>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <div class="pricing-header">
+                        <h3>Free</h3>
+                        <div class="price">$0</div>
+                        <p>Perfect for getting started</p>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>✅ Markdown Export</li>
+                        <li>✅ JSON Export</li>
+                        <li>✅ Basic Conversation View</li>
+                        <li>✅ Contact List</li>
+                        <li>❌ PDF Export</li>
+                        <li>❌ Excel Export</li>
+                        <li>❌ Bulk Export</li>
+                        <li>❌ Analytics</li>
+                    </ul>
+                    <button class="btn btn-outline">Get Started Free</button>
+                </div>
+                <div class="pricing-card featured">
+                    <div class="pricing-badge">Most Popular</div>
+                    <div class="pricing-header">
+                        <h3>Pro</h3>
+                        <div class="price">$9.99<span>/month</span></div>
+                        <p>For serious freelancers</p>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>✅ Everything in Free</li>
+                        <li>✅ PDF Export</li>
+                        <li>✅ Excel Export</li>
+                        <li>✅ Bulk Export All</li>
+                        <li>✅ Conversation Analytics</li>
+                        <li>✅ Attachment Management</li>
+                        <li>✅ Advanced Insights</li>
+                        <li>✅ Priority Support</li>
+                    </ul>
+                    <button class="btn btn-primary">Upgrade to Pro</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Ready to Secure Your Conversations?</h2>
+                <p>Join thousands of freelancers who trust Fiverr Conversation Extractor to backup their important client communications.</p>
+                <button class="btn btn-primary btn-large">Get Started Now</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Fiverr Extractor</h4>
+                    <p>Secure your Fiverr conversations with powerful export tools.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Features</h4>
+                    <ul>
+                        <li><a href="#features">Export Formats</a></li>
+                        <li><a href="#features">Bulk Export</a></li>
+                        <li><a href="#features">Analytics</a></li>
+                        <li><a href="#features">Privacy</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="#contact">Contact</a></li>
+                        <li><a href="#privacy">Privacy Policy</a></li>
+                        <li><a href="#terms">Terms of Service</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Fiverr Conversation Extractor. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html> 

@@ -1,7 +1,7 @@
 # X (Twitter) Post for Fiverr Conversation Extractor
 
 ## Main Post (280 characters)
-🚀 Just launched: Fiverr Conversation Extractor!
+🚀 Coming Soon: Fiverr Conversation Extractor!
 
 Extract & backup your Fiverr conversations with:
 ✅ PDF/Excel exports
@@ -18,16 +18,16 @@ Never lose important client messages again!
 ## Thread Version (Multiple tweets)
 
 ### Tweet 1:
-🚀 Just launched: Fiverr Conversation Extractor!
+🚀 Building something exciting for Fiverr freelancers!
 
-A Chrome extension that helps freelancers extract, backup, and analyze their Fiverr conversations.
+Working on a Chrome extension that will help you extract, backup, and analyze your Fiverr conversations.
 
 Never lose important client messages again! 
 
-#Fiverr #Freelancer
+#Fiverr #Freelancer #ComingSoon
 
 ### Tweet 2:
-📊 Key Features:
+📊 What we're building:
 
 ✅ Export conversations as PDF/Excel
 ✅ Bulk export all chats at once
@@ -40,7 +40,7 @@ Perfect for freelancers who want to keep their communication history safe!
 #Productivity #ChromeExtension
 
 ### Tweet 3:
-🔒 Privacy First:
+🔒 Privacy First Design:
 
 • All processing happens locally in your browser
 • No data sent to our servers
@@ -52,7 +52,7 @@ Your conversations stay private and secure!
 #Privacy #Security
 
 ### Tweet 4:
-💡 Pro Features:
+💡 Pro Features Coming:
 
 • PDF & Excel exports
 • Bulk conversation export
@@ -60,7 +60,7 @@ Your conversations stay private and secure!
 • Attachment management
 • Conversation insights
 
-Upgrade to Pro for advanced features!
+Pro version will unlock advanced features!
 
 #FreelancerTools #Business
 
@@ -72,7 +72,7 @@ Upgrade to Pro for advanced features!
 • Anyone who values communication history
 • Fiverr sellers & buyers
 
-Try it now and never worry about losing important messages!
+Stay tuned for the launch! 
 
 #FiverrSeller #FreelanceLife
 
@@ -80,13 +80,13 @@ Try it now and never worry about losing important messages!
 
 ## Alternative Short Version (Single tweet)
 
-🚀 New Chrome Extension: Fiverr Conversation Extractor
+🚀 Coming Soon: Fiverr Conversation Extractor
 
 Extract, backup & analyze your Fiverr conversations with PDF/Excel exports, bulk downloads, and conversation analytics.
 
 Never lose client messages again!
 
-#Fiverr #Freelancer #Productivity
+#Fiverr #Freelancer #Productivity #ComingSoon
 
 ---
 
@@ -100,4 +100,5 @@ Never lose client messages again!
 - #Business
 - #Privacy
 - #Security
-- #FreelancerTools 
+- #FreelancerTools
+- #ComingSoon 
