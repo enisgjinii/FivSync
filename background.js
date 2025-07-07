@@ -148,40 +148,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
   }
 
-  // Handle payment success from web page
-  else if (request.type === 'PAYMENT_SUCCESS') {
-    console.log('Payment success received:', request);
-    const sessionId = request.sessionId;
-    
-    if (sessionId) {
-      chrome.storage.local.get('userId', (result) => {
-        const userId = result.userId;
-        if (userId) {
-          const subscriptionData = {
-            isPro: true,
-            status: 'active',
-            stripeCustomerId: null,
-            subscriptionId: sessionId,
-          };
-          UserSubscription.updateSubscriptionStatus(userId, subscriptionData)
-            .then(() => {
-              console.log('User subscription updated in Firestore');
-              chrome.storage.local.set({ isPro: true, subscriptionStatus: 'active' });
-              sendResponse({ success: true });
-            })
-            .catch((error) => {
-              console.error('Error updating subscription in Firestore:', error);
-              sendResponse({ success: false, error: error.message });
-            });
-        } else {
-          console.error('User ID not found in storage');
-          sendResponse({ success: false, error: 'User ID not found' });
-        }
-      });
-    }
-    return true; // Indicates that the response is sent asynchronously
-  }
-
   // Handle pro status check
   else if (request.type === 'CHECK_PRO_STATUS') {
     sendResponse({ proStatus: proStatus });
@@ -266,6 +232,41 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
       }
     });
+  }
+});
+
+chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
+  if (request.type === 'PAYMENT_SUCCESS') {
+    console.log('External payment success message received:', request);
+    const sessionId = request.sessionId;
+    
+    if (sessionId) {
+      chrome.storage.local.get('userId', (result) => {
+        const userId = result.userId;
+        if (userId) {
+          const subscriptionData = {
+            isPro: true,
+            status: 'active',
+            stripeCustomerId: null,
+            subscriptionId: sessionId,
+          };
+          UserSubscription.updateSubscriptionStatus(userId, subscriptionData)
+            .then(() => {
+              console.log('User subscription updated in Firestore');
+              chrome.storage.local.set({ isPro: true, subscriptionStatus: 'active' });
+              sendResponse({ success: true });
+            })
+            .catch((error) => {
+              console.error('Error updating subscription in Firestore:', error);
+              sendResponse({ success: false, error: error.message });
+            });
+        } else {
+          console.error('User ID not found in storage');
+          sendResponse({ success: false, error: 'User ID not found' });
+        }
+      });
+    }
+    return true; // Indicates that the response is sent asynchronously
   }
 });
 
