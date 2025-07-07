@@ -89,7 +89,7 @@ export default function Home() {
     try {
       // Call the actual waitlist API
       console.log('Sending waitlist signup request for:', email);
-      const response = await fetch('https://fiv-sync.vercel.app/api/waitlist-signup', {
+      const response = await fetch('/api/waitlist-signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
