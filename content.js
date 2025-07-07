@@ -121,6 +121,24 @@ function formatFileSize(bytes) {
   else return (bytes / 1048576).toFixed(1) + ' MB';
 }
 
+// Helper function to send messages with retry logic
+async function sendMessageWithRetry(message, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await chrome.runtime.sendMessage(message);
+      return true;
+    } catch (error) {
+      console.log(`Message send attempt ${attempt} failed:`, error.message);
+      if (attempt === maxRetries) {
+        console.error('All retry attempts failed for message:', message.type);
+        return false;
+      }
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+    }
+  }
+}
+
 // Function to fetch all contacts recursively
 async function fetchAllContacts() {
   let allContacts = [];
@@ -141,7 +159,7 @@ async function fetchAllContacts() {
           : 'https://www.fiverr.com/inbox/contacts';
         
         console.log(`Fetching batch ${batchNumber}...`);
-        chrome.runtime.sendMessage({
+        await sendMessageWithRetry({
           type: 'CONTACTS_PROGRESS',
           message: `Fetching batch ${batchNumber}...`
         });
@@ -162,7 +180,7 @@ async function fetchAllContacts() {
         
         if (!contacts || !Array.isArray(contacts) || contacts.length === 0) {
           console.log('No more contacts found.');
-          chrome.runtime.sendMessage({
+          await sendMessageWithRetry({
             type: 'CONTACTS_PROGRESS',
             message: 'No more contacts found.'
           });
@@ -188,7 +206,7 @@ async function fetchAllContacts() {
         }
         
         console.log(`Batch ${batchNumber}: Found ${contacts.length} contacts (Total: ${allContacts.length})`);
-        chrome.runtime.sendMessage({
+        await sendMessageWithRetry({
           type: 'CONTACTS_PROGRESS',
           message: `Batch ${batchNumber}: Found ${contacts.length} contacts (Total: ${allContacts.length})`,
           totalContacts: allContacts.length
@@ -198,7 +216,7 @@ async function fetchAllContacts() {
         return oldestTimestamp;
       } catch (error) {
         console.error('Error fetching contacts:', error);
-        chrome.runtime.sendMessage({
+        await sendMessageWithRetry({
           type: 'CONTACTS_PROGRESS',
           message: `Error in batch ${batchNumber}: ${error.message}`,
           isError: true
@@ -218,7 +236,7 @@ async function fetchAllContacts() {
     }
 
     // Send final results
-    chrome.runtime.sendMessage({
+    await sendMessageWithRetry({
       type: 'CONTACTS_FETCHED',
       data: allContacts,
       message: `Completed! Total contacts found: ${allContacts.length}`
@@ -227,7 +245,7 @@ async function fetchAllContacts() {
     return allContacts;
   } catch (error) {
     console.error('Fatal error in fetchAllContacts:', error);
-    chrome.runtime.sendMessage({
+    await sendMessageWithRetry({
       type: 'CONTACTS_PROGRESS',
       message: `Fatal error: ${error.message}`,
       isError: true
@@ -239,7 +257,7 @@ async function fetchAllContacts() {
 // Function to fetch conversation data with pagination
 async function fetchConversation(username) {
   if (!username) {
-    chrome.runtime.sendMessage({
+    await sendMessageWithRetry({
       type: 'EXTRACTION_ERROR',
       error: 'No username provided for conversation extraction.'
     });
@@ -255,7 +273,7 @@ async function fetchConversation(username) {
 
     while (!lastPage) {
       // Notify about batch progress
-      chrome.runtime.sendMessage({
+      await sendMessageWithRetry({
         type: 'EXTRACTION_PROGRESS',
         message: `Fetching message batch ${batchNumber}...`
       });
@@ -360,7 +378,7 @@ async function fetchConversation(username) {
     });
 
     // Notify popup about completion with username
-    chrome.runtime.sendMessage({
+    await sendMessageWithRetry({
       type: 'CONVERSATION_EXTRACTED',
       data: processedData,
       message: `Conversation with ${username} extracted successfully!`
@@ -368,7 +386,7 @@ async function fetchConversation(username) {
 
   } catch (error) {
     console.error('Error fetching conversation:', error);
-    chrome.runtime.sendMessage({
+    await sendMessageWithRetry({
       type: 'EXTRACTION_ERROR',
       error: error.message || 'Unknown error occurred during extraction'
     });
@@ -379,13 +397,15 @@ async function fetchConversation(username) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (!request || !request.type) return;
   
+  console.log('Content script received message:', request.type);
+  
   if (request.type === 'EXTRACT_CONVERSATION') {
     // Get username from storage instead of URL
     chrome.storage.local.get(['currentUsername'], function(result) {
       if (result.currentUsername) {
         fetchConversation(result.currentUsername);
       } else {
-        chrome.runtime.sendMessage({
+        sendMessageWithRetry({
           type: 'EXTRACTION_ERROR',
           error: 'No username found for conversation extraction.'
         });
@@ -394,4 +414,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.type === 'FETCH_ALL_CONTACTS') {
     fetchAllContacts();
   }
+  
+  // Always send a response to keep the message channel open
+  sendResponse({ received: true });
+  return true;
 });
+
+// Notify background script that content script is ready
+chrome.runtime.sendMessage({
+  type: 'CONTENT_SCRIPT_READY',
+  tabId: chrome.tabs ? chrome.tabs.TAB_ID_NONE : null
+}).catch(err => {
+  console.log('Background script not ready yet, this is normal on page load');
+});
+
+// Also notify when the page is fully loaded
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    chrome.runtime.sendMessage({
+      type: 'CONTENT_SCRIPT_LOADED',
+      url: window.location.href
+    }).catch(err => {
+      console.log('Background script not available during DOM load');
+    });
+  });
+} else {
+  // Page already loaded
+  chrome.runtime.sendMessage({
+    type: 'CONTENT_SCRIPT_LOADED',
+    url: window.location.href
+  }).catch(err => {
+    console.log('Background script not available');
+  });
+}

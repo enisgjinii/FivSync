@@ -99,6 +99,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  // Handle content script ready notification
+  else if (request.type === 'CONTENT_SCRIPT_READY' || request.type === 'CONTENT_SCRIPT_LOADED') {
+    if (tabId) {
+      activeTabsWithContentScript.add(tabId);
+      console.log('Content script ready for tab:', tabId);
+    }
+    sendResponse({ received: true });
+    return true;
+  }
+
   // Handle pro activation
   else if (request.type === 'PRO_ACTIVATED') {
     console.log('Pro features activated:', request.data);
@@ -109,17 +119,67 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sessionId: request.data.sessionId
     };
     
+    // Save to storage
+    chrome.storage.local.set({
+      isPro: true,
+      userEmail: proStatus.userEmail,
+      activatedAt: proStatus.activatedAt,
+      sessionId: proStatus.sessionId
+    });
+    
     // Broadcast pro activation to all tabs
     chrome.tabs.query({}, (tabs) => {
       tabs.forEach(tab => {
+        if (activeTabsWithContentScript.has(tab.id)) {
         chrome.tabs.sendMessage(tab.id, {
           type: 'PRO_STATUS_UPDATED',
           proStatus: proStatus
         }).catch(() => {
           // Ignore errors for tabs without content scripts
+            console.log('Tab', tab.id, 'does not have content script');
         });
+        }
       });
     });
+  }
+
+  // Handle payment success from web page
+  else if (request.type === 'PAYMENT_SUCCESS') {
+    console.log('Payment success received:', request);
+    const sessionId = request.sessionId;
+    
+    if (sessionId) {
+      // Update pro status
+      proStatus = {
+        isPro: true,
+        userEmail: proStatus.userEmail,
+        activatedAt: new Date().toISOString(),
+        sessionId: sessionId
+      };
+      
+      // Save to storage
+      chrome.storage.local.set({
+        isPro: true,
+        activatedAt: proStatus.activatedAt,
+        sessionId: proStatus.sessionId
+      });
+      
+      console.log('Pro status updated after payment success:', proStatus);
+      
+      // Broadcast pro activation to all tabs
+      chrome.tabs.query({}, (tabs) => {
+        tabs.forEach(tab => {
+          if (activeTabsWithContentScript.has(tab.id)) {
+            chrome.tabs.sendMessage(tab.id, {
+              type: 'PRO_STATUS_UPDATED',
+              proStatus: proStatus
+            }).catch(() => {
+              console.log('Tab', tab.id, 'does not have content script');
+            });
+          }
+        });
+      });
+    }
   }
 
   // Handle pro status check
@@ -178,21 +238,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (tabs && tabs.length > 0) {
         const tab = tabs[0];
         if (tab && tab.url && tab.url.includes('fiverr.com')) {
-          // Initialize process tracking
-          const processType = request.type === 'FETCH_ALL_CONTACTS' ? 'contacts' : 'conversations';
-          ongoingProcesses[processType].set(tab.id, {
-            status: 'starting',
-            timestamp: Date.now()
-          });
-          
-          chrome.tabs.sendMessage(tab.id, { ...request, tabId: tab.id }).catch(err => {
-            console.error('Failed to send message to content script:', err);
-            ongoingProcesses[processType].set(tab.id, {
+          // Check if content script is ready
+          if (!activeTabsWithContentScript.has(tab.id)) {
+            console.log('Content script not ready, injecting...');
+            chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              files: ['content.js']
+            }).then(() => {
+              activeTabsWithContentScript.add(tab.id);
+              // Wait a moment for content script to initialize
+              setTimeout(() => {
+                sendMessageToContentScript(tab.id, request);
+              }, 100);
+            }).catch(err => {
+              console.error('Failed to inject content script:', err);
+              ongoingProcesses[request.type === 'FETCH_ALL_CONTACTS' ? 'contacts' : 'conversations'].set(tab.id, {
               status: 'error',
-              error: 'Failed to communicate with content script',
+                error: 'Failed to inject content script',
               timestamp: Date.now()
             });
           });
+          } else {
+            sendMessageToContentScript(tab.id, request);
+          }
         } else {
           console.error('Not on a Fiverr page');
         }
@@ -200,3 +268,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
   }
 });
+
+// Helper function to send message to content script with better error handling
+function sendMessageToContentScript(tabId, request) {
+  const processType = request.type === 'FETCH_ALL_CONTACTS' ? 'contacts' : 'conversations';
+  
+  // Initialize process tracking
+  ongoingProcesses[processType].set(tabId, {
+    status: 'starting',
+    timestamp: Date.now()
+  });
+  
+  chrome.tabs.sendMessage(tabId, { ...request, tabId: tabId }).then(response => {
+    console.log('Message sent successfully to content script');
+  }).catch(err => {
+    console.error('Failed to send message to content script:', err);
+    ongoingProcesses[processType].set(tabId, {
+      status: 'error',
+      error: 'Failed to communicate with content script: ' + err.message,
+      timestamp: Date.now()
+    });
+  });
+}

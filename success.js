@@ -65,11 +65,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error('Error sending update message:', chrome.runtime.lastError);
                     updateStatus('Subscription activated, but failed to refresh extension. Please reopen it.', true);
                 } else {
-                    updateStatus('Subscription activated! Redirecting you back to the extension...');
-                    // Redirect to the main extension interface and close this tab
+                    updateStatus('Subscription activated! Opening extension in new tab...');
+                    // Open the main extension interface in a new tab
                     setTimeout(() => {
-                        chrome.tabs.create({ url: 'popup.html' });
-                        window.close();
+                        chrome.tabs.create({ url: chrome.runtime.getURL('popup.html') });
+                        // Keep the success tab open for reference
                     }, 2000); // 2-second delay for the user to see the message
                 }
             });
@@ -87,15 +87,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Close button
     closeButton.addEventListener('click', () => {
-        window.close();
+        // Open extension in new tab instead of closing
+        chrome.tabs.create({ url: chrome.runtime.getURL('popup.html') });
     });
 
     processSubscription();
 
-    // Auto-close after 30 seconds if user doesn't interact
+    // Auto-open extension after 30 seconds if user doesn't interact
     setTimeout(() => {
-        if (confirm('Close this window and start using your Pro features?')) {
-            window.close();
+        if (confirm('Open the extension in a new tab to start using your Pro features?')) {
+            chrome.tabs.create({ url: chrome.runtime.getURL('popup.html') });
         }
     }, 30000);
 }); 

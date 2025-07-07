@@ -53,13 +53,22 @@ module.exports = async (req, res) => {
       console.log('Success URL from request:', success_url);
       console.log('Cancel URL from request:', cancel_url);
       
+      // Log the exact URL format being processed
+      if (success_url) {
+        console.log('Success URL breakdown:');
+        console.log('- Full URL:', success_url);
+        console.log('- Protocol:', success_url.split('://')[0]);
+        console.log('- Extension ID:', success_url.match(/extension:\/\/([^\/]+)/)?.[1]);
+        console.log('- Path:', success_url.split('extension://')[1]?.split('?')[0]);
+      }
+      
       // Extract extension ID from origin header (as a fallback)
       const origin = req.headers.origin || req.headers.referer;
       console.log('Request from origin:', origin);
       
       let extensionId = 'glhngllgakepoelafphbpjgdnknloikj'; // Default to your extension ID
-      if (origin && origin.includes('chrome-extension://')) {
-        const match = origin.match(/chrome-extension:\/\/([^\/]+)/);
+      if (origin && origin.includes('extension://')) {
+        const match = origin.match(/extension:\/\/([^\/]+)/);
         if (match) {
           extensionId = match[1];
         }
@@ -75,8 +84,8 @@ module.exports = async (req, res) => {
           },
         ],
         mode: 'subscription',
-        success_url: success_url || `chrome-extension://${extensionId}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: cancel_url || `chrome-extension://${extensionId}/cancel.html`,
+        success_url: success_url || `extension://${extensionId}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: cancel_url || `extension://${extensionId}/cancel.html`,
         metadata: {
           source: 'fiverr-extractor-extension',
           timestamp: new Date().toISOString(),
@@ -95,6 +104,35 @@ module.exports = async (req, res) => {
         }
       };
 
+      // Ensure proper extension:// URL format
+      if (sessionConfig.success_url) {
+        // Clean and validate the success URL
+        let cleanSuccessUrl = sessionConfig.success_url
+          .replace(/chrome-extension\/\//g, 'chrome-extension://') // Fix double slash issues
+          .replace(/extension\/\//g, 'extension://') // Fix double slash issues
+          .replace(/chrome-extension:\/\/\//g, 'chrome-extension://') // Fix triple slash issues
+          .replace(/extension:\/\/\//g, 'extension://') // Fix triple slash issues
+          .replace(/chrome-extension:\/\/([^\/]+)\/\//g, 'chrome-extension://$1/') // Fix extension ID followed by double slash
+          .replace(/extension:\/\/([^\/]+)\/\//g, 'extension://$1/'); // Fix extension ID followed by double slash
+        
+        // Convert chrome-extension:// to extension:// for unpublished extensions
+        if (cleanSuccessUrl.startsWith('chrome-extension://')) {
+          cleanSuccessUrl = cleanSuccessUrl.replace('chrome-extension://', 'extension://');
+        }
+        
+        sessionConfig.success_url = cleanSuccessUrl;
+        console.log('Cleaned success URL:', sessionConfig.success_url);
+        
+        // Validate the final URL format
+        const urlRegex = /^extension:\/\/[a-zA-Z0-9]+\/[^?]+\?session_id=\{CHECKOUT_SESSION_ID\}$/;
+        if (!urlRegex.test(sessionConfig.success_url)) {
+          console.error('Invalid success URL format after cleaning:', sessionConfig.success_url);
+          // Use a fallback URL
+          sessionConfig.success_url = `extension://${extensionId}/success.html?session_id={CHECKOUT_SESSION_ID}`;
+          console.log('Using fallback success URL:', sessionConfig.success_url);
+        }
+      }
+      
       // Add customer email if provided
       if (customerEmail && customerEmail.includes('@')) {
         sessionConfig.customer_email = customerEmail;
@@ -111,7 +149,7 @@ module.exports = async (req, res) => {
 
       console.log('Checkout session created successfully:', session.id);
       console.log('Checkout URL:', session.url);
-      console.log('Success URL:', `chrome-extension://${extensionId}/success.html`);
+      console.log('Success URL:', `extension://${extensionId}/success.html`);
       if (customerEmail) {
         console.log('Customer email set for checkout:', customerEmail);
       }
