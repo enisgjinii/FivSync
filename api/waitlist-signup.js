@@ -1,6 +1,10 @@
 const nodemailer = require('nodemailer');
 
 module.exports = async (req, res) => {
+  console.log(`Received ${req.method} request to waitlist-signup`);
+  console.log('Request headers:', req.headers);
+  console.log('Request body:', req.body);
+
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -8,12 +12,14 @@ module.exports = async (req, res) => {
 
   // Handle preflight OPTIONS request
   if (req.method === 'OPTIONS') {
+    console.log('Handling OPTIONS preflight request');
     res.status(200).end();
     return;
   }
 
   // Only allow POST requests
   if (req.method !== 'POST') {
+    console.log(`Method ${req.method} not allowed`);
     return res.status(405).json({ 
       error: { message: 'Method not allowed' } 
     });
@@ -26,6 +32,17 @@ module.exports = async (req, res) => {
     if (!email || !email.includes('@')) {
       return res.status(400).json({ 
         error: { message: 'Valid email is required' } 
+      });
+    }
+
+    // Check if email configuration is available
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+      console.error('Missing email configuration:', {
+        hasEmailUser: !!process.env.EMAIL_USER,
+        hasEmailPassword: !!process.env.EMAIL_PASSWORD
+      });
+      return res.status(500).json({ 
+        error: { message: 'Email service not configured' } 
       });
     }
 
@@ -100,8 +117,14 @@ module.exports = async (req, res) => {
     };
 
     // Send both emails
-    await transporter.sendMail(ownerEmail);
-    await transporter.sendMail(subscriberEmail);
+    try {
+      await transporter.sendMail(ownerEmail);
+      await transporter.sendMail(subscriberEmail);
+      console.log(`Emails sent successfully for: ${email}`);
+    } catch (emailError) {
+      console.error('Email sending failed:', emailError);
+      // Continue with success response even if email fails
+    }
 
     // Store in database or log (optional)
     console.log(`New waitlist signup: ${email} at ${new Date().toISOString()}`);
@@ -114,11 +137,17 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error('Waitlist signup error:', error);
     
-    res.status(500).json({ 
-      error: { 
-        message: 'Failed to join waitlist. Please try again.',
-        details: error.message 
-      } 
-    });
+    // Ensure we always return a proper JSON response
+    try {
+      res.status(500).json({ 
+        error: { 
+          message: 'Failed to join waitlist. Please try again.',
+          details: error.message 
+        } 
+      });
+    } catch (jsonError) {
+      console.error('Failed to send error response:', jsonError);
+      res.status(500).send('Internal server error');
+    }
   }
 }; 

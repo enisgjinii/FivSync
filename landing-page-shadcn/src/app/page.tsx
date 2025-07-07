@@ -88,15 +88,32 @@ export default function Home() {
     
     try {
       // Call the actual waitlist API
-      const response = await fetch('/api/waitlist-signup', {
+      console.log('Sending waitlist signup request for:', email);
+      const response = await fetch('https://fiv-sync.vercel.app/api/waitlist-signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email }),
       });
+      
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
 
-      const data = await response.json();
+      let data;
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+      
+      if (!responseText) {
+        throw new Error('Empty response from server');
+      }
+      
+      try {
+        data = JSON.parse(responseText);
+      } catch (jsonError) {
+        console.error('Failed to parse response JSON:', jsonError);
+        throw new Error('Invalid response from server');
+      }
 
       if (!response.ok) {
         throw new Error(data.error?.message || 'Failed to join waitlist');
