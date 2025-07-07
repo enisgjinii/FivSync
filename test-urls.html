@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test URLs - Fiverr Extractor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #4285f4 0%, #3367d6 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+        h1 {
+            color: #2E7D32;
+            margin-bottom: 1rem;
+            font-size: 2rem;
+        }
+        .test-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: background 0.2s;
+        }
+        .test-button:hover {
+            background: #45a049;
+        }
+        .cancel-button {
+            background: #ff9800;
+        }
+        .cancel-button:hover {
+            background: #f57c00;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border-left: 4px solid #2196f3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>URL Test Page</h1>
+        <div class="info">
+            <p>This page tests the success and cancel URLs for the Fiverr Extractor payment flow.</p>
+            <p>Extension ID: <strong id="extensionId">glhngllgakepoelafphbpjgdnknloikj</strong></p>
+        </div>
+
+        <button class="test-button" id="testSuccess">Test Success URL</button>
+        <button class="test-button cancel-button" id="testCancel">Test Cancel URL</button>
+        
+        <div id="results" style="margin-top: 20px; text-align: left;">
+            <h3>Test Results:</h3>
+            <div id="successResult"></div>
+            <div id="cancelResult"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const testSuccess = document.getElementById('testSuccess');
+            const testCancel = document.getElementById('testCancel');
+            const successResult = document.getElementById('successResult');
+            const cancelResult = document.getElementById('cancelResult');
+            const extensionId = document.getElementById('extensionId').textContent;
+
+            // Test success URL
+            testSuccess.addEventListener('click', () => {
+                const successUrl = `https://fiv-sync.vercel.app/success?session_id=test_session_123&extension_id=${extensionId}`;
+                successResult.innerHTML = `
+                    <div style="background: #e8f5e8; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                        <strong>Success URL:</strong><br>
+                        <code>${successUrl}</code><br>
+                        <button onclick="window.open('${successUrl}', '_blank')" style="margin-top: 10px; padding: 5px 10px; background: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer;">Open Success Page</button>
+                    </div>
+                `;
+            });
+
+            // Test cancel URL
+            testCancel.addEventListener('click', () => {
+                const cancelUrl = `https://fiv-sync.vercel.app/cancel?extension_id=${extensionId}`;
+                cancelResult.innerHTML = `
+                    <div style="background: #fff3e0; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                        <strong>Cancel URL:</strong><br>
+                        <code>${cancelUrl}</code><br>
+                        <button onclick="window.open('${cancelUrl}', '_blank')" style="margin-top: 10px; padding: 5px 10px; background: #ff9800; color: white; border: none; border-radius: 3px; cursor: pointer;">Open Cancel Page</button>
+                    </div>
+                `;
+            });
+        });
+    </script>
+</body>
+</html> 
