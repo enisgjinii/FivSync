@@ -609,40 +609,50 @@ async function fetchContacts() {
   
   try {
     showButtonLoading(fetchContactsBtn, true);
-    document.getElementById('contacts-progress').textContent = 'Fetching contacts...';
-    
-    // Send message to content script
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    if (!tab.url.includes('fiverr.com')) {
-      throw new Error('Please navigate to Fiverr.com first');
+    const progressElement = document.getElementById('contacts-progress');
+    if (progressElement) {
+      progressElement.textContent = 'Fetching contacts...';
     }
     
-    const response = await chrome.tabs.sendMessage(tab.id, { action: 'fetchContacts' });
+    // Send message to background script instead of content script directly
+    const response = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Request timeout - please make sure you are on Fiverr.com'));
+      }, 30000); // 30 second timeout
+      
+      chrome.runtime.sendMessage({ type: 'FETCH_ALL_CONTACTS' }, (response) => {
+        clearTimeout(timeout);
+        
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        
+        resolve(response);
+      });
+    });
     
-    if (response && response.success) {
-      contacts = response.contacts || [];
-      console.log('Fetched contacts:', contacts);
-      
-      renderContactsList(contacts);
-      document.getElementById('contacts-progress').textContent = `Found ${contacts.length} contacts`;
-      
-      showStatus(`Found ${contacts.length} contacts`, 'success');
-    } else {
-      throw new Error(response?.error || 'Failed to fetch contacts');
-    }
+    // The actual response will come through message listeners
+    showStatus('Starting contact fetch...', 'info');
     
   } catch (error) {
-    console.error('Error fetching contacts:', error);
-    document.getElementById('contacts-progress').textContent = 'Error fetching contacts';
+    console.error('Error initiating contact fetch:', error);
+    const progressElement = document.getElementById('contacts-progress');
+    if (progressElement) {
+      progressElement.textContent = 'Error fetching contacts';
+    }
     showStatus(error.message, 'error');
-  } finally {
     showButtonLoading(fetchContactsBtn, false);
   }
 }
 
 function renderContactsList(contactsToRender) {
   const contactsList = document.getElementById('contacts-list');
+  
+  if (!contactsList) {
+    console.error('Contacts list element not found');
+    return;
+  }
   
   if (!contactsToRender || contactsToRender.length === 0) {
     contactsList.innerHTML = `
@@ -660,18 +670,46 @@ function renderContactsList(contactsToRender) {
     return;
   }
   
-  contactsList.innerHTML = contactsToRender.map(contact => `
-    <div class="contact-item" data-contact-id="${contact.id}">
-      <div class="contact-name">${contact.name}</div>
-      <div class="contact-last-message">${contact.lastMessage || 'No recent messages'}</div>
-    </div>
-  `).join('');
+  contactsList.innerHTML = contactsToRender.map(contact => {
+    try {
+      // Handle different contact data structures
+      const contactName = contact.name || contact.username || 'Unknown User';
+      const contactId = contact.id || contact.username || contactName;
+      
+      // Format last message with proper fallbacks
+      let lastMessage = 'No recent messages';
+      if (contact.lastMessage) {
+        lastMessage = contact.lastMessage;
+      } else if (contact.recentMessage) {
+        lastMessage = contact.recentMessage;
+      } else if (contact.lastMessageDate) {
+        lastMessage = `Last message: ${new Date(contact.lastMessageDate).toLocaleDateString()}`;
+      } else if (contact.recentMessageDate) {
+        lastMessage = `Last message: ${new Date(contact.recentMessageDate).toLocaleDateString()}`;
+      }
+      
+      return `
+        <div class="contact-item" data-contact-id="${contactId}">
+          <div class="contact-name">${contactName}</div>
+          <div class="contact-last-message">${lastMessage}</div>
+        </div>
+      `;
+    } catch (error) {
+      console.error('Error rendering contact:', contact, error);
+      return `
+        <div class="contact-item" data-contact-id="error">
+          <div class="contact-name">Error loading contact</div>
+          <div class="contact-last-message">Contact data corrupted</div>
+        </div>
+      `;
+    }
+  }).join('');
   
   // Add click listeners
   contactsList.querySelectorAll('.contact-item').forEach(item => {
     item.addEventListener('click', () => {
       const contactId = item.dataset.contactId;
-      const contact = contacts.find(c => c.id === contactId);
+      const contact = contacts.find(c => (c.id || c.username) === contactId);
       if (contact) {
         selectContact(contact);
       }
@@ -687,36 +725,307 @@ function selectContact(contact) {
     item.classList.remove('selected');
   });
   
-  const selectedItem = document.querySelector(`[data-contact-id="${contact.id}"]`);
+  const contactId = contact.id || contact.username || contact.name;
+  const selectedItem = document.querySelector(`[data-contact-id="${contactId}"]`);
   if (selectedItem) {
     selectedItem.classList.add('selected');
   }
   
   // Enable extract button
-  extractConversationBtn.disabled = false;
-  extractConversationBtn.textContent = `Extract ${contact.name}'s Conversation`;
+  if (extractConversationBtn) {
+    extractConversationBtn.disabled = false;
+    const contactName = contact.name || contact.username || 'Unknown User';
+    extractConversationBtn.textContent = `Extract ${contactName}'s Conversation`;
+  }
   
   // Store selected contact
   window.selectedContact = contact;
 }
 
-// Contact search functionality
-function initializeContactSearch() {
-  contactSearch.addEventListener('input', (e) => {
-    const searchTerm = e.target.value.toLowerCase();
-    
-    if (!searchTerm) {
-      renderContactsList(contacts);
-      return;
+// Extract conversation functionality
+async function extractConversation() {
+  if (!window.selectedContact) {
+    showStatus('Please select a contact first', 'error');
+    return;
+  }
+  
+  try {
+    showButtonLoading(extractConversationBtn, true);
+    const progressElement = document.getElementById('extraction-progress');
+    if (progressElement) {
+      progressElement.textContent = 'Starting extraction...';
     }
     
-    const filteredContacts = contacts.filter(contact => 
-      contact.name.toLowerCase().includes(searchTerm) ||
-      (contact.lastMessage && contact.lastMessage.toLowerCase().includes(searchTerm))
-    );
+    // Get the username from the selected contact
+    const username = window.selectedContact.name || window.selectedContact.username || 'unknown';
     
-    renderContactsList(filteredContacts);
-  });
+    // Store the selected username for the content script
+    await new Promise((resolve) => {
+      chrome.storage.local.set({ currentUsername: username }, resolve);
+    });
+    
+    // Send extraction request through background script
+    const response = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Extraction timeout - please make sure you are on Fiverr.com'));
+      }, 60000); // 60 second timeout for extractions
+      
+      chrome.runtime.sendMessage({ type: 'EXTRACT_CONVERSATION' }, (response) => {
+        clearTimeout(timeout);
+        
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        
+        resolve(response);
+      });
+    });
+    
+    showStatus('Starting conversation extraction...', 'info');
+    
+  } catch (error) {
+    console.error('Error initiating extraction:', error);
+    const progressElement = document.getElementById('extraction-progress');
+    if (progressElement) {
+      progressElement.textContent = 'Error starting extraction';
+    }
+    showStatus(error.message, 'error');
+    showButtonLoading(extractConversationBtn, false);
+  }
+}
+
+// Contact search functionality
+function initializeContactSearch() {
+  if (contactSearch) {
+    contactSearch.addEventListener('input', (e) => {
+      const searchTerm = e.target.value.toLowerCase();
+      
+      if (!searchTerm) {
+        renderContactsList(contacts);
+        return;
+      }
+      
+      const filteredContacts = contacts.filter(contact => 
+        contact.name.toLowerCase().includes(searchTerm) ||
+        (contact.lastMessage && contact.lastMessage.toLowerCase().includes(searchTerm))
+      );
+      
+      renderContactsList(filteredContacts);
+    });
+  }
+}
+
+// Download file functionality
+async function downloadFile(format) {
+  if (!currentConversation) {
+    showStatus('No conversation to export', 'error');
+    return;
+  }
+  
+  try {
+    let content = '';
+    let filename = '';
+    let mimeType = '';
+    
+    const username = currentConversation.username || 'unknown';
+    const timestamp = new Date().toISOString().split('T')[0];
+    
+    switch (format) {
+      case 'markdown':
+        content = await convertToMarkdown(currentConversation);
+        filename = `${username}_conversation_${timestamp}.md`;
+        mimeType = 'text/markdown';
+        break;
+        
+      case 'json':
+        content = JSON.stringify(currentConversation, null, 2);
+        filename = `${username}_conversation_${timestamp}.json`;
+        mimeType = 'application/json';
+        break;
+        
+      case 'txt':
+        if (!isPro) {
+          showStatus('TXT export is a Pro feature. Please upgrade to continue.', 'error');
+          return;
+        }
+        content = await convertToText(currentConversation);
+        filename = `${username}_conversation_${timestamp}.txt`;
+        mimeType = 'text/plain';
+        break;
+        
+      case 'csv':
+        if (!isPro) {
+          showStatus('CSV export is a Pro feature. Please upgrade to continue.', 'error');
+          return;
+        }
+        content = await convertToCSV(currentConversation);
+        filename = `${username}_conversation_${timestamp}.csv`;
+        mimeType = 'text/csv';
+        break;
+        
+      default:
+        throw new Error('Unsupported export format');
+    }
+    
+    // Create and download file
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    
+    chrome.downloads.download({
+      url: url,
+      filename: filename,
+      saveAs: false
+    }, (downloadId) => {
+      if (chrome.runtime.lastError) {
+        console.error('Download error:', chrome.runtime.lastError);
+        showStatus('Error downloading file', 'error');
+      } else {
+        showStatus(`${format.toUpperCase()} file downloaded successfully!`, 'success');
+        URL.revokeObjectURL(url);
+      }
+    });
+    
+  } catch (error) {
+    console.error('Export error:', error);
+    showStatus(`Error exporting ${format}: ${error.message}`, 'error');
+  }
+}
+
+// Convert conversation to markdown
+async function convertToMarkdown(data) {
+  if (!data || !data.messages || !Array.isArray(data.messages)) {
+    return '# Conversation\n\nNo messages found.';
+  }
+
+  let otherUsername = data.username || 'Unknown User';
+  let markdown = `# Conversation with ${otherUsername}\n\n`;
+  
+  for (const message of data.messages) {
+    if (!message) continue;
+    
+    const timestamp = message.formattedTime || new Date(message.createdAt).toLocaleString();
+    const sender = message.sender || 'Unknown';
+    
+    markdown += `### ${sender} (${timestamp})\n`;
+    
+    if (message.repliedToMessage) {
+      const repliedMsg = message.repliedToMessage;
+      const repliedTime = repliedMsg.formattedTime || new Date(repliedMsg.createdAt).toLocaleString();
+      markdown += `> Replying to ${repliedMsg.sender || 'Unknown'} (${repliedTime}):\n`;
+      const repliedBody = repliedMsg.body || '';
+      markdown += `> ${repliedBody.replace(/\n/g, '\n> ')}\n\n`;
+    }
+    
+    if (message.body) {
+      markdown += `${message.body}\n`;
+    }
+    
+    if (message.attachments && message.attachments.length > 0) {
+      markdown += '\n**Attachments:**\n';
+      for (const attachment of message.attachments) {
+        markdown += `- ${attachment.filename} (${formatFileSize(attachment.fileSize)})\n`;
+      }
+    }
+    
+    markdown += '\n---\n\n';
+  }
+  
+  return markdown;
+}
+
+// Convert conversation to plain text
+async function convertToText(data) {
+  if (!data || !data.messages || !Array.isArray(data.messages)) {
+    return 'Conversation\n\nNo messages found.';
+  }
+
+  let otherUsername = data.username || 'Unknown User';
+  let text = `Conversation with ${otherUsername}\n${'='.repeat(50)}\n\n`;
+  
+  for (const message of data.messages) {
+    if (!message) continue;
+    
+    const timestamp = message.formattedTime || new Date(message.createdAt).toLocaleString();
+    const sender = message.sender || 'Unknown';
+    
+    text += `${sender} (${timestamp})\n`;
+    text += `-`.repeat(30) + '\n';
+    
+    if (message.repliedToMessage) {
+      const repliedMsg = message.repliedToMessage;
+      const repliedTime = repliedMsg.formattedTime || new Date(repliedMsg.createdAt).toLocaleString();
+      text += `Replying to ${repliedMsg.sender || 'Unknown'} (${repliedTime}):\n`;
+      text += `"${repliedMsg.body || ''}"\n\n`;
+    }
+    
+    if (message.body) {
+      text += `${message.body}\n`;
+    }
+    
+    if (message.attachments && message.attachments.length > 0) {
+      text += '\nAttachments:\n';
+      for (const attachment of message.attachments) {
+        text += `- ${attachment.filename} (${formatFileSize(attachment.fileSize)})\n`;
+      }
+    }
+    
+    text += '\n' + '='.repeat(50) + '\n\n';
+  }
+  
+  return text;
+}
+
+// Convert conversation to CSV
+async function convertToCSV(data) {
+  if (!data || !data.messages || !Array.isArray(data.messages)) {
+    return 'timestamp,sender,message,attachments,replied_to\n';
+  }
+
+  let csv = 'timestamp,sender,message,attachments,replied_to\n';
+  
+  for (const message of data.messages) {
+    if (!message) continue;
+    
+    const timestamp = message.formattedTime || new Date(message.createdAt).toLocaleString();
+    const sender = message.sender || 'Unknown';
+    const body = (message.body || '').replace(/"/g, '""').replace(/\n/g, ' ');
+    
+    const attachments = message.attachments && message.attachments.length > 0 
+      ? message.attachments.map(a => a.filename).join('; ')
+      : '';
+    
+    const repliedTo = message.repliedToMessage 
+      ? `${message.repliedToMessage.sender}: ${(message.repliedToMessage.body || '').substring(0, 50)}...`
+      : '';
+    
+    csv += `"${timestamp}","${sender}","${body}","${attachments}","${repliedTo}"\n`;
+  }
+  
+  return csv;
+}
+
+// Helper function to format file size
+function formatFileSize(bytes) {
+  if (!bytes) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+// Debug function to test contact data structure
+function debugContactData(contact) {
+  console.log('Contact debug info:');
+  console.log('- Raw contact:', contact);
+  console.log('- Keys:', Object.keys(contact));
+  console.log('- name:', contact.name);
+  console.log('- username:', contact.username);
+  console.log('- id:', contact.id);
+  console.log('- lastMessage:', contact.lastMessage);
+  console.log('- recentMessage:', contact.recentMessage);
+  console.log('- lastMessageDate:', contact.lastMessageDate);
+  console.log('- recentMessageDate:', contact.recentMessageDate);
 }
 
 // Form switching
@@ -882,6 +1191,27 @@ function initializeMainAppListeners() {
     fetchContactsBtn.addEventListener('click', fetchContacts);
   }
   
+  if (extractConversationBtn) {
+    extractConversationBtn.addEventListener('click', extractConversation);
+  }
+  
+  // Export buttons
+  if (downloadMdBtn) {
+    downloadMdBtn.addEventListener('click', () => downloadFile('markdown'));
+  }
+  
+  if (downloadJsonBtn) {
+    downloadJsonBtn.addEventListener('click', () => downloadFile('json'));
+  }
+  
+  if (downloadTxtBtn) {
+    downloadTxtBtn.addEventListener('click', () => downloadFile('txt'));
+  }
+  
+  if (downloadCsvBtn) {
+    downloadCsvBtn.addEventListener('click', () => downloadFile('csv'));
+  }
+  
   // Upgrade button
   const upgradeBtn = document.getElementById('upgrade-btn');
   if (upgradeBtn) {
@@ -1036,11 +1366,35 @@ function initializeAuthStateObserver() {
   });
 }
 
+// Detect if we're in popup or sidebar mode
+function detectDisplayMode() {
+  const body = document.body;
+  const width = window.innerWidth || document.documentElement.clientWidth;
+  
+  // Clear existing mode classes
+  body.classList.remove('popup-mode', 'sidebar-mode');
+  
+  // Detect mode based on window width and context
+  if (width <= 500 || window.location.search.includes('popup=true')) {
+    body.classList.add('popup-mode');
+    console.log('Display mode: popup');
+  } else {
+    body.classList.add('sidebar-mode');
+    console.log('Display mode: sidebar');
+  }
+}
+
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('DOM loaded, initializing popup...');
   
   try {
+    // Detect and set display mode
+    detectDisplayMode();
+    
+    // Re-detect on resize for sidebar mode
+    window.addEventListener('resize', detectDisplayMode);
+    
     // Initialize authentication forms
     initializeAuthForms();
     
@@ -1052,6 +1406,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Ensure user session
     await ensureUserSession();
+    
+    // Test contact rendering function
+    console.log('Contact rendering function ready');
     
     console.log('Popup initialization complete');
     
@@ -1072,8 +1429,97 @@ chrome.runtime.onMessage?.addListener((request, sender, sendResponse) => {
     console.log('User logged in from another part of extension');
     ensureUserSession();
   }
+  // Handle contact fetch progress
+  else if (request.type === 'CONTACTS_PROGRESS') {
+    const progressElement = document.getElementById('contacts-progress');
+    if (progressElement) {
+      progressElement.textContent = request.message || 'Processing...';
+    }
+    showStatus(request.message || 'Processing contacts...', request.isError ? 'error' : 'info');
+  }
+  // Handle contacts fetched
+  else if (request.type === 'CONTACTS_FETCHED') {
+    const progressElement = document.getElementById('contacts-progress');
+    if (progressElement) {
+      progressElement.textContent = request.message || 'Contacts loaded!';
+    }
+    
+    if (request.data && Array.isArray(request.data)) {
+      contacts = request.data;
+      console.log('Received contacts data:', contacts);
+      
+      // Log first contact structure for debugging
+      if (contacts.length > 0) {
+        console.log('First contact structure:', contacts[0]);
+        debugContactData(contacts[0]);
+      }
+      
+      renderContactsList(contacts);
+      showStatus(`Found ${contacts.length} contacts`, 'success');
+    }
+    
+    showButtonLoading(fetchContactsBtn, false);
+    
+    // Hide progress after a delay
+    setTimeout(() => {
+      if (progressElement) {
+        progressElement.textContent = '';
+      }
+    }, 3000);
+  }
+  // Handle conversation extraction progress
+  else if (request.type === 'EXTRACTION_PROGRESS') {
+    const progressElement = document.getElementById('extraction-progress');
+    if (progressElement) {
+      progressElement.textContent = request.message || 'Extracting...';
+    }
+    showStatus(request.message || 'Extracting conversation...', 'info');
+  }
+  // Handle conversation extracted
+  else if (request.type === 'CONVERSATION_EXTRACTED') {
+    const progressElement = document.getElementById('extraction-progress');
+    if (progressElement) {
+      progressElement.textContent = request.message || 'Conversation extracted!';
+    }
+    
+    if (request.data) {
+      currentConversation = request.data;
+      
+      // Show export actions
+      const exportCard = document.getElementById('export-actions-card');
+      const conversationName = document.getElementById('current-conversation-name');
+      
+      if (exportCard) exportCard.style.display = 'block';
+      if (conversationName) conversationName.textContent = `Conversation with ${request.data.username}`;
+      
+      showStatus(`Conversation with ${request.data.username} ready for export!`, 'success');
+    }
+    
+    const extractBtn = document.getElementById('extract-conversation-btn');
+    showButtonLoading(extractBtn, false);
+    
+    // Hide progress after a delay
+    setTimeout(() => {
+      if (progressElement) {
+        progressElement.textContent = '';
+      }
+    }, 3000);
+  }
+  // Handle extraction errors
+  else if (request.type === 'EXTRACTION_ERROR') {
+    const progressElement = document.getElementById('extraction-progress');
+    if (progressElement) {
+      progressElement.textContent = 'Error extracting conversation';
+    }
+    
+    showStatus(`Error: ${request.error || 'Failed to extract conversation'}`, 'error');
+    
+    const extractBtn = document.getElementById('extract-conversation-btn');
+    showButtonLoading(extractBtn, false);
+  }
   
   sendResponse({ success: true });
+  return true; // Keep message channel open
 });
 
 // Export functions for testing or external access

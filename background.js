@@ -154,7 +154,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
-  // Track process status updates
+  // Track process status updates and forward to popup
   else if (request.type === 'CONTACTS_PROGRESS' || request.type === 'EXTRACTION_PROGRESS') {
     if (tabId) {
       const processType = request.type === 'CONTACTS_PROGRESS' ? 'contacts' : 'conversations';
@@ -164,8 +164,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         timestamp: Date.now()
       });
     }
+    
+    // Forward to popup
+    forwardMessageToPopup(request);
   }
-  // Handle process completion
+  // Handle process completion and forward to popup
   else if (request.type === 'CONTACTS_FETCHED' || request.type === 'CONVERSATION_EXTRACTED') {
     if (tabId) {
       const processType = request.type === 'CONTACTS_FETCHED' ? 'contacts' : 'conversations';
@@ -175,8 +178,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         timestamp: Date.now()
       });
     }
+    
+    // Forward to popup
+    forwardMessageToPopup(request);
   }
-  // Handle errors
+  // Handle errors and forward to popup
   else if (request.type === 'EXTRACTION_ERROR') {
     if (tabId) {
       ongoingProcesses.conversations.set(tabId, {
@@ -185,6 +191,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         timestamp: Date.now()
       });
     }
+    
+    // Forward to popup
+    forwardMessageToPopup(request);
   }
   // Handle popup requesting status
   else if (request.type === 'GET_PROCESS_STATUS') {
@@ -290,4 +299,32 @@ function sendMessageToContentScript(tabId, request) {
       timestamp: Date.now()
     });
   });
+}
+
+// Helper function to forward messages to popup
+function forwardMessageToPopup(message) {
+  // Get all extension views (popups, options pages, etc.)
+  const views = chrome.extension.getViews({ type: 'popup' });
+  
+  if (views && views.length > 0) {
+    // Send message to popup if it's open
+    views.forEach(view => {
+      if (view.chrome && view.chrome.runtime) {
+        try {
+          view.chrome.runtime.sendMessage(message);
+        } catch (error) {
+          console.log('Failed to send message to popup view:', error);
+        }
+      }
+    });
+  }
+  
+  // Also try runtime.sendMessage for sidepanel
+  try {
+    chrome.runtime.sendMessage(message).catch(() => {
+      // Ignore errors if no popup is listening
+    });
+  } catch (error) {
+    // Ignore connection errors
+  }
 }
