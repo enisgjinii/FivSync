@@ -7,7 +7,6 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { motion, easeOut } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
 const fadeInUp = {
