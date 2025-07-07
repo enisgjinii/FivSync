@@ -188,17 +188,7 @@ export default function Home() {
           whileHover={{ scale: 1.05 }}
           transition={{ type: "spring", stiffness: 400 }}
         >
-          <motion.div 
-            className="inline-block w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl mr-3 shadow-lg"
-            animate={{ 
-              rotate: 360,
-              scale: [1, 1.1, 1]
-            }}
-            transition={{ 
-              rotate: { duration: 20, repeat: Infinity, ease: "linear" },
-              scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
-            }}
-          />
+          <img src="/logo.png" alt="Fiverr Extractor Logo" className="w-10 h-10 mr-3 rounded-xl shadow-lg object-contain" />
           <span className="gradient-text text-2xl">Fiverr Extractor</span>
         </motion.div>
         
@@ -764,6 +754,7 @@ export default function Home() {
               transition={{ duration: 0.6 }}
               className="text-center md:text-left"
             >
+              <img src="/logo.png" alt="Fiverr Extractor Logo" className="w-12 h-12 mb-4 mx-auto md:mx-0 rounded-xl object-contain" />
               <h4 className="font-bold text-xl mb-4">Fiverr Extractor</h4>
               <p className="text-muted-foreground text-base leading-relaxed">Secure your Fiverr conversations with powerful export tools.</p>
             </motion.div>
