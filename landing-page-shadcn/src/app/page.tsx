@@ -640,7 +640,7 @@ export default function Home() {
               },
               {
                 title: "Pro",
-                price: "$9.99/mo",
+                price: "$4.99/mo",
                 features: ["✅ Everything in Free", "✅ PDF Export", "✅ Excel Export", "✅ Bulk Export All", "✅ Conversation Analytics", "✅ Attachment Management", "✅ Advanced Insights", "✅ Priority Support"],
                 buttonText: "Upgrade to Pro",
                 popular: true
