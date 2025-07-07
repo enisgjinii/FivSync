@@ -54,12 +54,12 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Get the extension ID from the runtime URL
       const extensionId = chrome.runtime.id;
-      // Use API endpoints for success and cancel URLs
-      const success_url = `https://fiv-sync.vercel.app/api/success?session_id={CHECKOUT_SESSION_ID}&extension_id=${extensionId}`;
-      const cancel_url = `https://fiv-sync.vercel.app/api/cancel?extension_id=${extensionId}`;
+      // Use direct paths to the static HTML files hosted on Vercel
+      const success_url = `https://fiv-sync.vercel.app/success.html?session_id={CHECKOUT_SESSION_ID}&extension_id=${extensionId}`;
+      const cancel_url = `https://fiv-sync.vercel.app/cancel.html?extension_id=${extensionId}`;
 
       // Ensure the success URL is properly formatted
-      console.log('Original success URL:', success_url);
+      console.log('Using success URL:', success_url);
       
       // Validate URL format before sending to API
       if (!success_url.startsWith('https://')) {

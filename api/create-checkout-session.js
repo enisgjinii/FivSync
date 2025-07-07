@@ -105,8 +105,8 @@ module.exports = async (req, res) => {
           },
         ],
         mode: 'subscription',
-        success_url: success_url || `https://fiv-sync.vercel.app/success?session_id={CHECKOUT_SESSION_ID}&extension_id=${extensionId}`,
-        cancel_url: cancel_url || `https://fiv-sync.vercel.app/cancel?extension_id=${extensionId}`,
+        success_url: success_url || `https://fiv-sync.vercel.app/success.html?session_id={CHECKOUT_SESSION_ID}&extension_id=${extensionId}`,
+        cancel_url: cancel_url || `https://fiv-sync.vercel.app/cancel.html?extension_id=${extensionId}`,
         metadata: {
           source: 'fiverr-extractor-extension',
           timestamp: new Date().toISOString(),
@@ -125,46 +125,12 @@ module.exports = async (req, res) => {
         }
       };
 
-      // Ensure proper URL format (support both https:// and extension:// URLs)
-      if (sessionConfig.success_url) {
-        console.log('Processing success URL:', sessionConfig.success_url);
-        
-        // If it's an HTTPS URL, validate it
-        if (sessionConfig.success_url.startsWith('https://')) {
-          const urlRegex = /^https:\/\/[^\/]+\/success\?session_id=\{CHECKOUT_SESSION_ID\}/;
-          if (!urlRegex.test(sessionConfig.success_url)) {
-            console.error('Invalid HTTPS success URL format:', sessionConfig.success_url);
-            // Use a fallback URL
-            sessionConfig.success_url = `https://fiv-sync.vercel.app/success?session_id={CHECKOUT_SESSION_ID}&extension_id=${extensionId}`;
-            console.log('Using fallback HTTPS success URL:', sessionConfig.success_url);
-          }
-        } else {
-          // Handle extension:// URLs (legacy support)
-          let cleanSuccessUrl = sessionConfig.success_url
-            .replace(/chrome-extension\/\//g, 'chrome-extension://') // Fix double slash issues
-            .replace(/extension\/\//g, 'extension://') // Fix double slash issues
-            .replace(/chrome-extension:\/\/\//g, 'chrome-extension://') // Fix triple slash issues
-            .replace(/extension:\/\/\//g, 'extension://') // Fix triple slash issues
-            .replace(/chrome-extension:\/\/([^\/]+)\/\//g, 'chrome-extension://$1/') // Fix extension ID followed by double slash
-            .replace(/extension:\/\/([^\/]+)\/\//g, 'extension://$1/'); // Fix extension ID followed by double slash
-          
-          // Convert chrome-extension:// to extension:// for unpublished extensions
-          if (cleanSuccessUrl.startsWith('chrome-extension://')) {
-            cleanSuccessUrl = cleanSuccessUrl.replace('chrome-extension://', 'extension://');
-          }
-          
-          sessionConfig.success_url = cleanSuccessUrl;
-          console.log('Cleaned extension success URL:', sessionConfig.success_url);
-          
-          // Validate the final URL format
-          const urlRegex = /^extension:\/\/[a-zA-Z0-9]+\/[^?]+\?session_id=\{CHECKOUT_SESSION_ID\}$/;
-          if (!urlRegex.test(sessionConfig.success_url)) {
-            console.error('Invalid extension success URL format after cleaning:', sessionConfig.success_url);
-            // Use a fallback URL
-            sessionConfig.success_url = `extension://${extensionId}/success.html?session_id={CHECKOUT_SESSION_ID}`;
-            console.log('Using fallback extension success URL:', sessionConfig.success_url);
-          }
-        }
+      // Simple validation for the URLs
+      if (!sessionConfig.success_url.startsWith('https://') || !sessionConfig.cancel_url.startsWith('https://')) {
+          console.error('Invalid URL format. URLs must be HTTPS.');
+          return res.status(500).json({ 
+            error: { message: 'Server configuration error - invalid URL format.' } 
+          });
       }
       
       // Add customer email if provided
