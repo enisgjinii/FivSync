@@ -67,7 +67,6 @@ const bounceIn = {
 };
 
 export default function Home() {
-  const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -479,9 +478,9 @@ export default function Home() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </motion.div>
-                <h3 className="text-2xl font-bold text-green-600 mb-2">You're on the list!</h3>
+                                  <h3 className="text-2xl font-bold text-green-600 mb-2">You&apos;re on the list!</h3>
                 <p className="text-muted-foreground mb-4">
-                  Thanks for joining our waitlist. We'll notify you as soon as we launch!
+                  Thanks for joining our waitlist. We&apos;ll notify you as soon as we launch!
                 </p>
                 <Button
                   variant="outline"
