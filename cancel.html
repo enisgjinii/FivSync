@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Cancelled - Fiverr Extractor</title>
+    <link rel="stylesheet" href="styles.css">
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -130,43 +131,19 @@
             const retryPayment = document.getElementById('retryPayment');
             const closeButton = document.getElementById('closeButton');
 
-            // Get URL parameters
-            const urlParams = new URLSearchParams(window.location.search);
-            const extensionId = urlParams.get('extension_id');
-
-            // Function to open the extension
             function openExtensionInTab() {
-                if (extensionId) {
-                    const extensionUrl = `chrome-extension://${extensionId}/popup.html`;
-                    window.open(extensionUrl, '_blank');
-                } else {
-                    alert('Extension ID not found. Please open the extension manually.');
-                }
+                chrome.tabs.create({ url: 'popup.html' });
             }
 
-            // Function to retry payment
             function retryPaymentProcess() {
-                if (extensionId) {
-                    const checkoutUrl = `chrome-extension://${extensionId}/checkout.html`;
-                    window.open(checkoutUrl, '_blank');
-                } else {
-                    alert('Extension ID not found. Please open the extension and try payment again.');
-                }
+                chrome.tabs.create({ url: 'checkout.html' });
             }
 
-            // Event listeners
             openExtension.addEventListener('click', openExtensionInTab);
             retryPayment.addEventListener('click', retryPaymentProcess);
             closeButton.addEventListener('click', () => {
                 window.close();
             });
-
-            // Auto-open extension after 10 seconds if user doesn't interact
-            setTimeout(() => {
-                if (confirm('Open the extension to try payment again?')) {
-                    openExtensionInTab();
-                }
-            }, 10000);
         });
     </script>
 </body>

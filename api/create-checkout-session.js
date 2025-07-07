@@ -126,8 +126,8 @@ module.exports = async (req, res) => {
       };
 
       // Simple validation for the URLs
-      if (!sessionConfig.success_url.startsWith('https://') || !sessionConfig.cancel_url.startsWith('https://')) {
-          console.error('Invalid URL format. URLs must be HTTPS.');
+      if (!sessionConfig.success_url.startsWith('chrome-extension://') || !sessionConfig.cancel_url.startsWith('chrome-extension://')) {
+          console.error('Invalid URL format. URLs must be chrome-extension://.');
           return res.status(500).json({ 
             error: { message: 'Server configuration error - invalid URL format.' } 
           });

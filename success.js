@@ -1,3 +1,6 @@
+import './firebase-app-lib.js';
+import './firebase-auth-lib.js';
+import './firebase-firestore-lib.js';
 // Import Firebase functions
 import { UserSubscription } from './firebase-auth.js';
 

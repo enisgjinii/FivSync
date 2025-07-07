@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Successful - Fiverr Extractor Pro</title>
+    <link rel="stylesheet" href="styles.css">
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -128,7 +129,7 @@
         <div class="success-icon">🎉</div>
         <h1>Payment Successful!</h1>
         <div class="subtitle">Welcome to Fiverr Extractor Pro!</div>
-        
+
         <div class="status" id="status">
             <span id="statusMessage">Processing your payment...</span>
         </div>
@@ -149,91 +150,9 @@
         <button class="close-button" id="closeButton">Close</button>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const statusMessage = document.getElementById('statusMessage');
-            const openExtension = document.getElementById('openExtension');
-            const closeButton = document.getElementById('closeButton');
-
-            // Get URL parameters
-            const urlParams = new URLSearchParams(window.location.search);
-            const sessionId = urlParams.get('session_id');
-            const extensionId = urlParams.get('extension_id');
-
-            if (!sessionId) {
-                statusMessage.textContent = 'Error: No session ID found.';
-                statusMessage.parentElement.className = 'error';
-                return;
-            }
-
-            // Function to update status
-            function updateStatus(message, isError = false) {
-                statusMessage.textContent = message;
-                statusMessage.parentElement.className = isError ? 'error' : 'status';
-            }
-
-            // Function to open the extension
-            function openExtensionInTab() {
-                if (extensionId) {
-                    const extensionUrl = `chrome-extension://${extensionId}/popup.html`;
-                    window.open(extensionUrl, '_blank');
-                } else {
-                    updateStatus('Extension ID not found. Please open the extension manually.', true);
-                }
-            }
-
-            // Process the successful payment
-            async function processPayment() {
-                updateStatus('Verifying payment and activating subscription...');
-
-                try {
-                    // Send message to extension if it's available
-                    if (extensionId) {
-                        // Try to communicate with the extension
-                        const message = {
-                            type: 'PAYMENT_SUCCESS',
-                            sessionId: sessionId,
-                            timestamp: new Date().toISOString()
-                        };
-
-                        // Attempt to send message to extension (this will only work if extension is open)
-                        try {
-                            // This is a fallback - the extension should handle this via background script
-                            console.log('Payment successful for session:', sessionId);
-                        } catch (e) {
-                            console.log('Extension communication not available:', e);
-                        }
-                    }
-
-                    updateStatus('Payment verified! Your Pro subscription is now active.');
-                    
-                    // Auto-open extension after a short delay
-                    setTimeout(() => {
-                        openExtensionInTab();
-                    }, 2000);
-
-                } catch (error) {
-                    console.error('Error processing payment:', error);
-                    updateStatus('Payment successful, but there was an issue activating your subscription. Please contact support.', true);
-                }
-            }
-
-            // Event listeners
-            openExtension.addEventListener('click', openExtensionInTab);
-            closeButton.addEventListener('click', () => {
-                window.close();
-            });
-
-            // Start processing
-            processPayment();
-
-            // Auto-open extension after 30 seconds if user doesn't interact
-            setTimeout(() => {
-                if (confirm('Open the extension to start using your Pro features?')) {
-                    openExtensionInTab();
-                }
-            }, 30000);
-        });
-    </script>
+    <script src="firebase-app-lib.js"></script>
+    <script src="firebase-auth-lib.js"></script>
+    <script src="firebase-firestore-lib.js"></script>
+    <script type="module" src="success.js"></script>
 </body>
 </html> 
