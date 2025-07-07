@@ -607,6 +607,13 @@ body.sidebar-mode {
   border-radius: var(--radius-sm);
 }
 
+.logo {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  object-fit: contain;
+}
+
 .header-title {
   font-size: var(--font-size-lg);
   font-weight: 700;
