@@ -400,6 +400,7 @@ function updateSubscriptionBadge() {
 
 function updateProFeatureButtons() {
   const proFeatures = document.querySelectorAll('.pro-feature');
+  const proFeaturesSection = document.getElementById('pro-features-section');
   
   proFeatures.forEach(element => {
     if (isPro) {
@@ -410,6 +411,15 @@ function updateProFeatureButtons() {
       element.style.cursor = 'not-allowed';
     }
   });
+  
+  // Show/hide Pro features section
+  if (proFeaturesSection) {
+    if (isPro) {
+      proFeaturesSection.style.display = 'none'; // Hide for Pro users
+    } else {
+      proFeaturesSection.style.display = 'block'; // Show for Free users
+    }
+  }
 }
 
 // Enhanced user session management
@@ -976,6 +986,82 @@ async function convertToText(data) {
   return text;
 }
 
+// Helper function to get file extension
+function getFileExtension(filename) {
+  if (!filename) return '';
+  const parts = filename.split('.');
+  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
+}
+
+// Helper function to check if file can be viewed in browser
+function canViewInBrowser(filename) {
+  const extension = getFileExtension(filename);
+  const viewableExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'pdf', 'txt', 'html', 'htm', 'css', 'js', 'json', 'xml', 'csv'];
+  return viewableExtensions.includes(extension);
+}
+
+// Helper function to get MIME type for file extension
+function getMimeType(filename) {
+  const extension = getFileExtension(filename);
+  const mimeTypes = {
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif',
+    'bmp': 'image/bmp',
+    'webp': 'image/webp',
+    'svg': 'image/svg+xml',
+    'pdf': 'application/pdf',
+    'txt': 'text/plain',
+    'html': 'text/html',
+    'htm': 'text/html',
+    'css': 'text/css',
+    'js': 'application/javascript',
+    'json': 'application/json',
+    'xml': 'application/xml',
+    'csv': 'text/csv'
+  };
+  return mimeTypes[extension] || 'application/octet-stream';
+}
+
+// View attachment in browser
+function viewAttachment(downloadUrl, filename) {
+  if (!downloadUrl) {
+    showStatus('View URL not available for this attachment', 'error');
+    return;
+  }
+  
+  try {
+    // Open in new tab
+    window.open(downloadUrl, '_blank');
+    showStatus(`Opening ${filename} in new tab...`, 'success');
+  } catch (error) {
+    console.error('Error viewing attachment:', error);
+    showStatus('Error viewing attachment', 'error');
+  }
+}
+
+// Download attachment function
+function downloadAttachment(downloadUrl, filename) {
+  if (!downloadUrl) {
+    showStatus('Download URL not available for this attachment', 'error');
+    return;
+  }
+  
+  try {
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showStatus(`Downloading ${filename}...`, 'success');
+  } catch (error) {
+    console.error('Error downloading attachment:', error);
+    showStatus('Error downloading attachment', 'error');
+  }
+}
+
 // Convert conversation to CSV
 async function convertToCSV(data) {
   if (!data || !data.messages || !Array.isArray(data.messages)) {
@@ -1212,6 +1298,255 @@ function initializeMainAppListeners() {
     downloadCsvBtn.addEventListener('click', () => downloadFile('csv'));
   }
   
+  // View Attachments button
+  const viewAttachmentsBtn = document.getElementById('view-attachments-btn');
+  if (viewAttachmentsBtn) {
+    viewAttachmentsBtn.addEventListener('click', () => {
+      if (!isPro) {
+        showStatus('View Attachments is a Pro feature. Please upgrade to continue.', 'error');
+        return;
+      }
+      
+      if (!currentConversation || !currentConversation.messages) {
+        showStatus('No conversation data available', 'error');
+        return;
+      }
+      
+      // Collect all attachments from the conversation
+      const attachments = [];
+      currentConversation.messages.forEach(message => {
+        if (message.attachments && message.attachments.length > 0) {
+          message.attachments.forEach(attachment => {
+            attachments.push({
+              ...attachment,
+              messageSender: message.sender,
+              messageTime: message.formattedTime || new Date(message.createdAt).toLocaleString(),
+              messageBody: message.body || ''
+            });
+          });
+        }
+      });
+      
+      if (attachments.length === 0) {
+        showStatus('No attachments found in this conversation', 'info');
+        return;
+      }
+      
+      // Populate attachments modal
+      const attachmentsContent = document.getElementById('attachments-content');
+      if (attachmentsContent) {
+        let attachmentsHtml = '<div class="attachments-list">';
+        
+        attachments.forEach((attachment, index) => {
+          const canView = canViewInBrowser(attachment.filename);
+          const fileExtension = getFileExtension(attachment.filename);
+          
+          attachmentsHtml += `
+            <div class="attachment-item">
+              <div class="attachment-info">
+                <div class="attachment-name">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="attachment-icon">
+                    ${fileExtension === 'pdf' ? '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 1 2-2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14,2 14,8 20,8"></polyline>' : ''}
+                    ${['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(fileExtension) ? '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21,15 16,10 5,21"></polyline>' : ''}
+                    ${['txt', 'html', 'htm', 'css', 'js', 'json', 'xml', 'csv'].includes(fileExtension) ? '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 1 2-2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14,2 14,8 20,8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10,9 9,9 8,9"></polyline>' : ''}
+                    ${!['pdf', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'txt', 'html', 'htm', 'css', 'js', 'json', 'xml', 'csv'].includes(fileExtension) ? '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 1 2-2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14,2 14,8 20,8"></polyline>' : ''}
+                  </svg>
+                  ${attachment.filename || 'Unknown File'}
+                  ${canView ? '<span class="viewable-badge">Viewable</span>' : ''}
+                </div>
+                <div class="attachment-details">
+                  <span class="attachment-size">${formatFileSize(attachment.fileSize || 0)}</span>
+                  <span class="attachment-sender">From: ${attachment.messageSender}</span>
+                  <span class="attachment-time">${attachment.messageTime}</span>
+                  <span class="attachment-type">${fileExtension.toUpperCase()}</span>
+                </div>
+                <div class="attachment-message">${attachment.messageBody.substring(0, 100)}${attachment.messageBody.length > 100 ? '...' : ''}</div>
+              </div>
+              <div class="attachment-actions">
+                ${canView ? `
+                  <button class="btn btn-sm btn-secondary" onclick="viewAttachment('${attachment.downloadUrl || ''}', '${attachment.filename || 'file'}')" title="View in browser">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    View
+                  </button>
+                ` : ''}
+                <button class="btn btn-sm btn-primary" onclick="downloadAttachment('${attachment.downloadUrl || ''}', '${attachment.filename || 'file'}')" title="Download file">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7,10 12,15 17,10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  Download
+                </button>
+              </div>
+            </div>
+          `;
+        });
+        
+        attachmentsHtml += '</div>';
+        attachmentsContent.innerHTML = attachmentsHtml;
+        
+        // Show the modal
+        showModal(attachmentsModal);
+      }
+    });
+  }
+  
+  // Export Metadata/Timestamps button
+  const exportMetadataBtn = document.getElementById('export-metadata-btn');
+  if (exportMetadataBtn) {
+    exportMetadataBtn.addEventListener('click', async () => {
+      if (!isPro) {
+        showStatus('Export Timestamps is a Pro feature. Please upgrade to continue.', 'error');
+        return;
+      }
+      
+      if (!currentConversation || !currentConversation.messages) {
+        showStatus('No conversation data available', 'error');
+        return;
+      }
+      
+      try {
+        const metadata = {
+          export_info: {
+            extractor_version: '2.0',
+            export_date: new Date().toISOString(),
+            conversation_with: currentConversation.username || 'unknown',
+            current_user: currentUser?.email || 'unknown',
+            total_messages: currentConversation.messages.length,
+            total_attachments: currentConversation.messages.reduce((total, msg) => 
+              total + (msg.attachments?.length || 0), 0)
+          },
+          message_metadata: currentConversation.messages.map(msg => ({
+            message_id: msg.id,
+            sender: msg.sender,
+            created_at_unix: msg.createdAt,
+            created_at_formatted: msg.formattedTime || new Date(msg.createdAt).toLocaleString(),
+            message_length_chars: msg.body?.length || 0,
+            has_attachments: (msg.attachments?.length || 0) > 0,
+            attachment_count: msg.attachments?.length || 0,
+            replied_to_message_id: msg.repliedToMessage?.id || null,
+            replied_to_sender: msg.repliedToMessage?.sender || null
+          }))
+        };
+        
+        const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${currentConversation.username || 'conversation'}_metadata_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showStatus('Timestamps and metadata exported successfully!', 'success');
+      } catch (error) {
+        console.error('Error exporting metadata:', error);
+        showStatus('Error exporting metadata', 'error');
+      }
+    });
+  }
+  
+  // Export PDF button
+  const exportPdfBtn = document.getElementById('export-pdf-btn');
+  if (exportPdfBtn) {
+    exportPdfBtn.addEventListener('click', async () => {
+      if (!isPro) {
+        showStatus('PDF export is a Pro feature. Please upgrade to continue.', 'error');
+        return;
+      }
+      
+      if (!currentConversation || !currentConversation.messages) {
+        showStatus('No conversation data available', 'error');
+        return;
+      }
+      
+      try {
+        showStatus('PDF export coming soon!', 'info');
+        // TODO: Implement PDF export functionality
+      } catch (error) {
+        console.error('Error exporting PDF:', error);
+        showStatus('Error exporting PDF', 'error');
+      }
+    });
+  }
+  
+  // Export Excel button
+  const exportExcelBtn = document.getElementById('export-excel-btn');
+  if (exportExcelBtn) {
+    exportExcelBtn.addEventListener('click', async () => {
+      if (!isPro) {
+        showStatus('Excel export is a Pro feature. Please upgrade to continue.', 'error');
+        return;
+      }
+      
+      if (!currentConversation || !currentConversation.messages) {
+        showStatus('No conversation data available', 'error');
+        return;
+      }
+      
+      try {
+        showStatus('Excel export coming soon!', 'info');
+        // TODO: Implement Excel export functionality
+      } catch (error) {
+        console.error('Error exporting Excel:', error);
+        showStatus('Error exporting Excel', 'error');
+      }
+    });
+  }
+  
+  // Bulk Export button
+  const bulkExportBtn = document.getElementById('bulk-export-btn');
+  if (bulkExportBtn) {
+    bulkExportBtn.addEventListener('click', async () => {
+      if (!isPro) {
+        showStatus('Bulk export is a Pro feature. Please upgrade to continue.', 'error');
+        return;
+      }
+      
+      if (!contacts || contacts.length === 0) {
+        showStatus('No contacts available for bulk export', 'error');
+        return;
+      }
+      
+      try {
+        showStatus('Bulk export coming soon!', 'info');
+        // TODO: Implement bulk export functionality
+      } catch (error) {
+        console.error('Error bulk exporting:', error);
+        showStatus('Error bulk exporting', 'error');
+      }
+    });
+  }
+  
+  // Analytics button
+  const analyticsBtn = document.getElementById('analytics-btn');
+  if (analyticsBtn) {
+    analyticsBtn.addEventListener('click', async () => {
+      if (!isPro) {
+        showStatus('Analytics is a Pro feature. Please upgrade to continue.', 'error');
+        return;
+      }
+      
+      if (!currentConversation || !currentConversation.messages) {
+        showStatus('No conversation data available for analytics', 'error');
+        return;
+      }
+      
+      try {
+        showStatus('Analytics coming soon!', 'info');
+        // TODO: Implement analytics functionality
+      } catch (error) {
+        console.error('Error showing analytics:', error);
+        showStatus('Error showing analytics', 'error');
+      }
+    });
+  }
+  
   // Upgrade button
   const upgradeBtn = document.getElementById('upgrade-btn');
   if (upgradeBtn) {
@@ -1234,7 +1569,7 @@ function initializeMainAppListeners() {
     });
   }
   
-  // Modal close buttons
+  // Modal close buttons and backdrop
   document.querySelectorAll('.modal-close, .modal-backdrop').forEach(element => {
     element.addEventListener('click', (e) => {
       if (e.target === element) {
@@ -1242,6 +1577,90 @@ function initializeMainAppListeners() {
       }
     });
   });
+  
+  // Close modals when clicking on modal content (but not on buttons/inputs)
+  document.querySelectorAll('.modal-content').forEach(modalContent => {
+    modalContent.addEventListener('click', (e) => {
+      // Don't close if clicking on interactive elements
+      if (e.target.tagName === 'BUTTON' || 
+          e.target.tagName === 'INPUT' || 
+          e.target.tagName === 'SELECT' || 
+          e.target.tagName === 'TEXTAREA' ||
+          e.target.closest('button') ||
+          e.target.closest('input') ||
+          e.target.closest('select') ||
+          e.target.closest('textarea')) {
+        return;
+      }
+      
+      // Close if clicking on the modal content itself
+      if (e.target === modalContent) {
+        hideAllModals();
+      }
+    });
+  });
+  
+  // Specific modal close button event listeners
+  const closeSettingsBtn = document.getElementById('close-settings-btn');
+  const closeProfileBtn = document.getElementById('close-profile-btn');
+  const closeAttachmentsBtn = document.getElementById('close-attachments-btn');
+  const settingsCancelBtn = document.getElementById('settings-cancel-btn');
+  const closeProfileFooterBtn = document.getElementById('close-profile-footer-btn');
+  
+  if (closeSettingsBtn) {
+    closeSettingsBtn.addEventListener('click', () => hideAllModals());
+  }
+  
+  if (closeProfileBtn) {
+    closeProfileBtn.addEventListener('click', () => hideAllModals());
+  }
+  
+  if (closeAttachmentsBtn) {
+    closeAttachmentsBtn.addEventListener('click', () => hideAllModals());
+  }
+  
+  if (settingsCancelBtn) {
+    settingsCancelBtn.addEventListener('click', () => hideAllModals());
+  }
+  
+  if (closeProfileFooterBtn) {
+    closeProfileFooterBtn.addEventListener('click', () => hideAllModals());
+  }
+  
+  // Close modals with ESC key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      hideAllModals();
+    }
+  });
+  
+  // Pro Features Modal
+  const proFeaturesModal = document.getElementById('pro-features-modal');
+  const closeProFeaturesBtn = document.getElementById('close-pro-features-btn');
+  const upgradeProBtn = document.getElementById('upgrade-pro-btn');
+  
+  if (closeProFeaturesBtn) {
+    closeProFeaturesBtn.addEventListener('click', () => hideAllModals());
+  }
+  
+  if (upgradeProBtn) {
+    upgradeProBtn.addEventListener('click', () => {
+      hideAllModals();
+      // TODO: Implement upgrade flow
+      showStatus('Upgrade flow coming soon!', 'info');
+    });
+  }
+  
+  // View Pro Features button
+  const viewProFeaturesBtn = document.getElementById('view-pro-features-btn');
+  if (viewProFeaturesBtn) {
+    viewProFeaturesBtn.addEventListener('click', () => {
+      if (proFeaturesModal) {
+        proFeaturesModal.style.display = 'flex';
+        document.getElementById('modal-backdrop').style.display = 'block';
+      }
+    });
+  }
   
   // Close dropdowns when clicking outside
   document.addEventListener('click', () => {
