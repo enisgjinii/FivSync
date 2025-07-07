@@ -52,7 +52,7 @@ export default function Home() {
                   <span className="inline-block w-10 h-10 bg-secondary rounded-full" />
                   <div className="text-right">
                     <div className="font-semibold">You <span className="text-xs text-muted-foreground ml-2">2:32 PM</span></div>
-                    <div className="text-sm text-muted-foreground">Thank you! I'm glad you liked it. What can I help you with?</div>
+                    <div className="text-sm text-muted-foreground">Thank you! I&apos;m glad you liked it. What can I help you with?</div>
                   </div>
                 </div>
               </div>
