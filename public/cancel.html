@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Cancelled - Fiverr Extractor</title>
-    <link rel="stylesheet" href="styles.css">
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -131,14 +130,31 @@
             const retryPayment = document.getElementById('retryPayment');
             const closeButton = document.getElementById('closeButton');
 
+            // Get URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const extensionId = urlParams.get('extension_id');
+
+            // Function to open the extension
             function openExtensionInTab() {
-                chrome.tabs.create({ url: 'popup.html' });
+                if (extensionId) {
+                    const extensionUrl = `chrome-extension://${extensionId}/popup.html`;
+                    window.open(extensionUrl, '_blank');
+                } else {
+                    alert('Extension ID not found. Please open the extension manually.');
+                }
             }
 
+            // Function to retry payment
             function retryPaymentProcess() {
-                chrome.tabs.create({ url: 'checkout.html' });
+                if (extensionId) {
+                    const checkoutUrl = `chrome-extension://${extensionId}/checkout.html`;
+                    window.open(checkoutUrl, '_blank');
+                } else {
+                    alert('Extension ID not found. Please open the extension and try payment again.');
+                }
             }
 
+            // Event listeners
             openExtension.addEventListener('click', openExtensionInTab);
             retryPayment.addEventListener('click', retryPaymentProcess);
             closeButton.addEventListener('click', () => {

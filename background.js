@@ -1,3 +1,8 @@
+try {
+  importScripts('firebase-app-lib.js', 'firebase-auth-lib.js', 'firebase-firestore-lib.js', 'firebase-auth.js');
+} catch (e) {
+  console.error(e);
+}
 // Keep track of active tabs with content scripts
 let activeTabsWithContentScript = new Set();
 
@@ -149,37 +154,32 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const sessionId = request.sessionId;
     
     if (sessionId) {
-      // Update pro status
-      proStatus = {
-        isPro: true,
-        userEmail: proStatus.userEmail,
-        activatedAt: new Date().toISOString(),
-        sessionId: sessionId
-      };
-      
-      // Save to storage
-      chrome.storage.local.set({
-        isPro: true,
-        activatedAt: proStatus.activatedAt,
-        sessionId: proStatus.sessionId
-      });
-      
-      console.log('Pro status updated after payment success:', proStatus);
-      
-      // Broadcast pro activation to all tabs
-      chrome.tabs.query({}, (tabs) => {
-        tabs.forEach(tab => {
-          if (activeTabsWithContentScript.has(tab.id)) {
-            chrome.tabs.sendMessage(tab.id, {
-              type: 'PRO_STATUS_UPDATED',
-              proStatus: proStatus
-            }).catch(() => {
-              console.log('Tab', tab.id, 'does not have content script');
+      chrome.storage.local.get('userId', (result) => {
+        const userId = result.userId;
+        if (userId) {
+          const subscriptionData = {
+            isPro: true,
+            status: 'active',
+            stripeCustomerId: null,
+            subscriptionId: sessionId,
+          };
+          UserSubscription.updateSubscriptionStatus(userId, subscriptionData)
+            .then(() => {
+              console.log('User subscription updated in Firestore');
+              chrome.storage.local.set({ isPro: true, subscriptionStatus: 'active' });
+              sendResponse({ success: true });
+            })
+            .catch((error) => {
+              console.error('Error updating subscription in Firestore:', error);
+              sendResponse({ success: false, error: error.message });
             });
-          }
-        });
+        } else {
+          console.error('User ID not found in storage');
+          sendResponse({ success: false, error: 'User ID not found' });
+        }
       });
     }
+    return true; // Indicates that the response is sent asynchronously
   }
 
   // Handle pro status check

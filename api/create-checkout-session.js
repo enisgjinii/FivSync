@@ -50,10 +50,24 @@ module.exports = async (req, res) => {
       // Extract customer email from request body
       const { customerEmail, success_url, cancel_url } = req.body || {};
       const origin = req.headers.origin || req.headers.referer;
-
+      
       let extensionId = 'glhngllgakepoelafphbpjgdnknloikj'; // Default to your extension ID
-      if (origin && origin.startsWith('chrome-extension://')) {
-        extensionId = origin.split('/')[2];
+      
+      if (success_url && success_url.startsWith('https://')) {
+        try {
+          const urlParams = new URL(success_url).searchParams;
+          const extensionIdFromUrl = urlParams.get('extension_id');
+          if (extensionIdFromUrl) {
+            extensionId = extensionIdFromUrl;
+          }
+        } catch (e) {
+          console.log('Could not parse extension ID from success URL:', e);
+        }
+      } else if (origin && origin.includes('extension://')) {
+        const match = origin.match(/extension:\/\/([^\/]+)/);
+        if (match) {
+          extensionId = match[1];
+        }
       }
       
       // Prepare checkout session configuration
@@ -66,8 +80,8 @@ module.exports = async (req, res) => {
           },
         ],
         mode: 'subscription',
-        success_url: success_url,
-        cancel_url: cancel_url,
+        success_url: success_url || `https://fiv-sync.vercel.app/success.html?session_id={CHECKOUT_SESSION_ID}&extension_id=${extensionId}`,
+        cancel_url: cancel_url || `https://fiv-sync.vercel.app/cancel.html?extension_id=${extensionId}`,
         metadata: {
           source: 'fiverr-extractor-extension',
           timestamp: new Date().toISOString(),
@@ -87,8 +101,8 @@ module.exports = async (req, res) => {
       };
 
       // Simple validation for the URLs
-      if (!sessionConfig.success_url.startsWith('chrome-extension://') || !sessionConfig.cancel_url.startsWith('chrome-extension://')) {
-          console.error('Invalid URL format. URLs must start with chrome-extension://');
+      if (!sessionConfig.success_url.startsWith('https://') || !sessionConfig.cancel_url.startsWith('https://')) {
+          console.error('Invalid URL format. URLs must be HTTPS.');
           return res.status(500).json({ 
             error: { message: 'Server configuration error - invalid URL format.' } 
           });

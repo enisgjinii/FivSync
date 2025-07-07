@@ -180,9 +180,9 @@ const onAuth = (callback) => {
     });
 };
 
-// Make functions available globally
-window.onAuth = onAuth;
-window.signUp = signUp;
-window.logIn = logIn;
-window.logOut = logOut;
-window.UserSubscription = UserSubscription; 
+// Make functions available in the worker's global scope
+self.onAuth = onAuth;
+self.signUp = signUp;
+self.logIn = logIn;
+self.logOut = logOut;
+self.UserSubscription = UserSubscription; 

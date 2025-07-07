@@ -45,5 +45,10 @@
       "resources": ["success.html", "cancel.html", "success.js", "checkout.html", "firebase-auth.js"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://fiv-sync.vercel.app/*"
+    ]
+  }
 }

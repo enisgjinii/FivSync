@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Successful - Fiverr Extractor Pro</title>
-    <link rel="stylesheet" href="styles.css">
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -129,7 +128,7 @@
         <div class="success-icon">🎉</div>
         <h1>Payment Successful!</h1>
         <div class="subtitle">Welcome to Fiverr Extractor Pro!</div>
-
+        
         <div class="status" id="status">
             <span id="statusMessage">Processing your payment...</span>
         </div>
@@ -150,9 +149,66 @@
         <button class="close-button" id="closeButton">Close</button>
     </div>
 
-    <script src="firebase-app-lib.js"></script>
-    <script src="firebase-auth-lib.js"></script>
-    <script src="firebase-firestore-lib.js"></script>
-    <script type="module" src="success.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const statusMessage = document.getElementById('statusMessage');
+            const openExtension = document.getElementById('openExtension');
+            const closeButton = document.getElementById('closeButton');
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session_id');
+            const extensionId = urlParams.get('extension_id');
+
+            function updateStatus(message, isError = false) {
+                statusMessage.textContent = message;
+                statusMessage.parentElement.className = isError ? 'error' : 'status';
+            }
+
+            function openExtensionInTab() {
+                if (extensionId) {
+                    const extensionUrl = `chrome-extension://${extensionId}/popup.html`;
+                    window.open(extensionUrl, '_blank');
+                } else {
+                    updateStatus('Extension ID not found. Please open the extension manually.', true);
+                }
+            }
+
+            async function processPayment() {
+                if (!sessionId) {
+                    updateStatus('Error: No session ID found.', true);
+                    return;
+                }
+
+                updateStatus('Verifying payment and activating subscription...');
+
+                if (extensionId) {
+                    const message = {
+                        type: 'PAYMENT_SUCCESS',
+                        sessionId: sessionId,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    chrome.runtime.sendMessage(extensionId, message, (response) => {
+                        if (chrome.runtime.lastError) {
+                            console.error('Error sending message:', chrome.runtime.lastError.message);
+                            updateStatus('Payment successful, but there was an issue activating your subscription. Please open the extension to sync your status.', true);
+                        } else {
+                            console.log('Message sent successfully, response:', response);
+                            updateStatus('Payment verified! Your Pro subscription is now active.');
+                        }
+                    });
+                } else {
+                    updateStatus('Extension ID not found. Cannot activate subscription automatically.', true);
+                }
+            }
+
+            openExtension.addEventListener('click', openExtensionInTab);
+            closeButton.addEventListener('click', () => {
+                window.close();
+            });
+
+            processPayment();
+        });
+    </script>
 </body>
 </html> 
