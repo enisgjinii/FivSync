@@ -1421,6 +1421,7 @@ async function showConversationAnalytics(data) {
         
         <div class="analytics-actions">
           <button class="btn btn-primary" onclick="exportAnalyticsData()">Export Analytics Data</button>
+          <button class="btn btn-secondary" onclick="showAIAnalysis()">🤖 AI Analysis</button>
           <button class="btn btn-secondary" onclick="this.closest('.modal-backdrop').remove()">Close</button>
         </div>
       </div>
@@ -1431,6 +1432,193 @@ async function showConversationAnalytics(data) {
   showModal(analyticsModal);
   
   showStatus('Analytics generated successfully!', 'success');
+}
+
+// Show AI-powered conversation analysis
+async function showAIAnalysis() {
+  if (!currentConversation || !currentConversation.messages) {
+    showStatus('No conversation data available for AI analysis', 'error');
+    return;
+  }
+
+  try {
+    showStatus('🤖 Analyzing conversation with AI...', 'info');
+    
+    // Perform comprehensive AI analysis using global function
+    const analysisResult = await window.performComprehensiveAnalysis(currentConversation.messages);
+    
+    if (!analysisResult.success) {
+      throw new Error(analysisResult.error || 'AI analysis failed');
+    }
+
+    const analysis = analysisResult.analysis;
+    
+    // Create AI analysis modal
+    const aiModal = document.createElement('div');
+    aiModal.className = 'modal-backdrop';
+    aiModal.id = 'ai-analysis-modal';
+    aiModal.innerHTML = `
+      <div class="modal-content ai-analysis-modal">
+        <div class="modal-header">
+          <h3>🤖 AI Conversation Analysis</h3>
+          <button class="modal-close" id="ai-modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="ai-analysis-tabs">
+            <button class="tab-btn active" data-tab="sentiment">Sentiment & Tone</button>
+            <button class="tab-btn" data-tab="summary">Summary</button>
+            <button class="tab-btn" data-tab="action-items">Action Items</button>
+            <button class="tab-btn" data-tab="effectiveness">Communication</button>
+            <button class="tab-btn" data-tab="insights">Insights</button>
+          </div>
+          
+          <div class="ai-analysis-content">
+            <div id="sentiment-tab" class="tab-content active">
+              <h4>Sentiment & Tone Analysis</h4>
+              <div class="ai-content">${analysis.sentiment.analysis || 'Analysis unavailable'}</div>
+            </div>
+            
+            <div id="summary-tab" class="tab-content">
+              <h4>Conversation Summary</h4>
+              <div class="ai-content">${analysis.summary.summary || 'Summary unavailable'}</div>
+            </div>
+            
+            <div id="action-items-tab" class="tab-content">
+              <h4>Action Items & Tasks</h4>
+              <div class="ai-content">${analysis.actionItems.actionItems || 'No action items found'}</div>
+            </div>
+            
+            <div id="effectiveness-tab" class="tab-content">
+              <h4>Communication Effectiveness</h4>
+              <div class="ai-content">${analysis.effectiveness.effectiveness || 'Analysis unavailable'}</div>
+            </div>
+            
+            <div id="insights-tab" class="tab-content">
+              <h4>Strategic Insights</h4>
+              <div class="ai-content">${analysis.insights.insights || 'Insights unavailable'}</div>
+            </div>
+          </div>
+          
+          <div class="ai-analysis-footer">
+            <div class="ai-model-info">
+              <span>Powered by GROQ AI (${analysis.sentiment.model})</span>
+            </div>
+            <div class="ai-analysis-actions">
+              <button class="btn btn-primary" id="export-ai-analysis-btn">Export AI Analysis</button>
+              <button class="btn btn-secondary" id="close-ai-modal-btn">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(aiModal);
+    showModal(aiModal);
+    
+    // Add event listeners for the modal
+    const closeBtn = aiModal.querySelector('#ai-modal-close');
+    const closeModalBtn = aiModal.querySelector('#close-ai-modal-btn');
+    const exportBtn = aiModal.querySelector('#export-ai-analysis-btn');
+    
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => aiModal.remove());
+    }
+    if (closeModalBtn) {
+      closeModalBtn.addEventListener('click', () => aiModal.remove());
+    }
+    if (exportBtn) {
+      exportBtn.addEventListener('click', () => exportAIAnalysis());
+    }
+    
+    // Add event listeners for tabs
+    const tabButtons = aiModal.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const tabName = e.target.getAttribute('data-tab');
+        switchAITab(tabName, aiModal);
+      });
+    });
+    
+    showStatus('🤖 AI analysis completed successfully!', 'success');
+    
+  } catch (error) {
+    console.error('Error performing AI analysis:', error);
+    showStatus(`AI analysis failed: ${error.message}`, 'error');
+  }
+}
+
+// Switch between AI analysis tabs
+function switchAITab(tabName, modal) {
+  // Hide all tab contents within this modal
+  const tabContents = modal.querySelectorAll('.tab-content');
+  tabContents.forEach(content => content.classList.remove('active'));
+  
+  // Remove active class from all tab buttons within this modal
+  const tabButtons = modal.querySelectorAll('.tab-btn');
+  tabButtons.forEach(btn => btn.classList.remove('active'));
+  
+  // Show selected tab content
+  const selectedTab = modal.querySelector(`#${tabName}-tab`);
+  if (selectedTab) {
+    selectedTab.classList.add('active');
+  }
+  
+  // Add active class to clicked button
+  const clickedButton = event.target;
+  if (clickedButton) {
+    clickedButton.classList.add('active');
+  }
+}
+
+// Export AI analysis data
+async function exportAIAnalysis() {
+  if (!currentConversation) {
+    showStatus('No conversation data available', 'error');
+    return;
+  }
+  
+  try {
+    const analysisResult = await window.performComprehensiveAnalysis(currentConversation.messages);
+    
+    if (!analysisResult.success) {
+      throw new Error(analysisResult.error || 'AI analysis failed');
+    }
+    
+    const exportData = {
+      conversationInfo: {
+        username: currentConversation.username,
+        messageCount: currentConversation.messages.length,
+        analyzedAt: new Date().toISOString()
+      },
+      aiAnalysis: analysisResult.analysis,
+      exportInfo: {
+        exportedAt: new Date().toISOString(),
+        version: '1.0',
+        aiModel: analysisResult.analysis.sentiment.model
+      }
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    chrome.downloads.download({
+      url: url,
+      filename: `${currentConversation.username}_ai_analysis_${new Date().toISOString().split('T')[0]}.json`,
+      saveAs: false
+    }, (downloadId) => {
+      if (chrome.runtime.lastError) {
+        console.error('Download error:', chrome.runtime.lastError);
+        showStatus('Error downloading AI analysis data', 'error');
+      } else {
+        showStatus('AI analysis data exported successfully!', 'success');
+        URL.revokeObjectURL(url);
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error exporting AI analysis:', error);
+    showStatus('Error exporting AI analysis data', 'error');
+  }
 }
 
 // Export analytics data
@@ -1677,6 +1865,18 @@ function initializeMainAppListeners() {
   
   if (extractConversationBtn) {
     extractConversationBtn.addEventListener('click', extractConversation);
+  }
+  
+  // AI Analysis button
+  const aiAnalysisBtn = document.getElementById('ai-analysis-btn');
+  if (aiAnalysisBtn) {
+    aiAnalysisBtn.addEventListener('click', () => {
+      if (currentConversation && currentConversation.messages) {
+        showAIAnalysis();
+      } else {
+        showStatus('Please extract a conversation first', 'error');
+      }
+    });
   }
   
   // Export buttons
