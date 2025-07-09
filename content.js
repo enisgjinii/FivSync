@@ -395,28 +395,46 @@ async function fetchConversation(username) {
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (!request || !request.type) return;
+  if (!request || !request.type) {
+    sendResponse({ error: 'Invalid message format' });
+    return true;
+  }
   
   console.log('Content script received message:', request.type);
   
+  // Handle PING message for connection testing
+  if (request.type === 'PING') {
+    sendResponse({ status: 'pong', ready: true });
+    return true;
+  }
+  
+  // Handle fetch contacts request
+  if (request.type === 'FETCH_ALL_CONTACTS') {
+    fetchAllContacts();
+    sendResponse({ status: 'fetching_contacts' });
+    return true;
+  }
+  
+  // Handle extract conversation request
   if (request.type === 'EXTRACT_CONVERSATION') {
     // Get username from storage instead of URL
     chrome.storage.local.get(['currentUsername'], function(result) {
       if (result.currentUsername) {
         fetchConversation(result.currentUsername);
+        sendResponse({ status: 'extracting_conversation', username: result.currentUsername });
       } else {
         sendMessageWithRetry({
           type: 'EXTRACTION_ERROR',
           error: 'No username found for conversation extraction.'
         });
+        sendResponse({ error: 'No username found' });
       }
     });
-  } else if (request.type === 'FETCH_ALL_CONTACTS') {
-    fetchAllContacts();
+    return true;
   }
   
-  // Always send a response to keep the message channel open
-  sendResponse({ received: true });
+  // Default response for unknown message types
+  sendResponse({ error: 'Unknown message type' });
   return true;
 });
 
