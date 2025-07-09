@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useEffect, useState } from "react";
-import { createCheckoutSession } from "@/lib/stripe";
 
 // Enhanced Apple-inspired styles
 const appleStyles = `
@@ -258,7 +257,6 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState("");
-  const [paymentLoading, setPaymentLoading] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -308,24 +306,6 @@ export default function Home() {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handlePayment = async (planType: 'free' | 'pro') => {
-    if (planType === 'free') {
-      // For free plan, redirect to Chrome Web Store
-      window.open('https://chrome.google.com/webstore/detail/fiverr-conversation-extractor/glhngllgakepoelafphbpjgdnknloikj', '_blank');
-      return;
-    }
-
-    setPaymentLoading(true);
-    try {
-      await createCheckoutSession(planType);
-    } catch (error) {
-      console.error('Payment error:', error);
-      alert('Payment failed. Please try again.');
-    } finally {
-      setPaymentLoading(false);
     }
   };
 
@@ -526,10 +506,9 @@ export default function Home() {
                     <Button 
                       size="lg" 
                       className="apple-button text-white font-semibold px-12 py-6 text-lg"
-                      onClick={() => handlePayment('free')}
-                      disabled={paymentLoading}
+                      onClick={() => document.getElementById('waitlist')?.scrollIntoView({ behavior: 'smooth' })}
                     >
-                      {paymentLoading ? 'Loading...' : 'Get Started Free'}
+                      Get Started Free
                     </Button>
                   </motion.div>
                   
@@ -541,7 +520,6 @@ export default function Home() {
                       variant="outline" 
                       size="lg" 
                       className="apple-glass border-slate-200 dark:border-slate-700 font-semibold px-12 py-6 text-lg"
-                      onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
                     >
                       Learn More
                     </Button>
@@ -1147,10 +1125,8 @@ export default function Home() {
                       <Button
                         variant={plan.popular ? "default" : "outline"}
                         className={`w-full py-6 text-lg font-semibold ${plan.popular ? "apple-button text-white" : "apple-glass border-slate-200 dark:border-slate-700"}`}
-                        onClick={() => handlePayment(plan.title.toLowerCase() as 'free' | 'pro')}
-                        disabled={paymentLoading}
                       >
-                        {paymentLoading && plan.title.toLowerCase() === 'pro' ? 'Processing...' : plan.buttonText}
+                        {plan.buttonText}
                       </Button>
                     </motion.div>
                   </div>
@@ -1185,13 +1161,8 @@ export default function Home() {
               whileHover={{ scale: 1.05, y: -3 }} 
               whileTap={{ scale: 0.95 }}
             >
-              <Button 
-                size="lg" 
-                className="apple-button text-white font-semibold px-16 py-8 text-xl"
-                onClick={() => handlePayment('pro')}
-                disabled={paymentLoading}
-              >
-                {paymentLoading ? 'Processing...' : 'Get Started Now'}
+              <Button size="lg" className="apple-button text-white font-semibold px-16 py-8 text-xl">
+                Get Started Now
               </Button>
             </motion.div>
           </div>
