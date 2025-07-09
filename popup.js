@@ -7,10 +7,17 @@ let contacts = [];
 let currentConversation = null;
 let isAuthenticated = false;
 
+// Theme variables
+let currentTheme = 'light';
+
 // UI Elements
 const authContainer = document.getElementById('auth-container');
 const mainApp = document.getElementById('main-app');
 const loadingOverlay = document.getElementById('loading-overlay');
+
+// Theme elements
+const themeToggle = document.getElementById('theme-toggle');
+const themeLabel = document.getElementById('theme-label');
 
 // Authentication forms
 const loginForm = document.getElementById('login-form');
@@ -64,6 +71,44 @@ const modalBackdrop = document.getElementById('modal-backdrop');
 const settingsModal = document.getElementById('settings-modal');
 const profileModal = document.getElementById('profile-modal');
 const attachmentsModal = document.getElementById('attachments-modal');
+
+// Theme functionality
+function applyTheme(isDark) {
+  const theme = isDark ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  currentTheme = theme;
+  
+  if (themeLabel) {
+    themeLabel.textContent = isDark ? 'Dark Mode' : 'Light Mode';
+  }
+  
+  if (themeToggle) {
+    themeToggle.checked = isDark;
+  }
+  
+  // Save theme preference to chrome storage
+  chrome.storage.local.set({ theme: theme });
+}
+
+function loadSavedTheme() {
+  chrome.storage.local.get('theme', function(result) {
+    const savedTheme = result.theme || 'light';
+    const isDark = savedTheme === 'dark';
+    applyTheme(isDark);
+  });
+}
+
+function initializeThemeToggle() {
+  if (themeToggle) {
+    // Load saved theme
+    loadSavedTheme();
+    
+    // Handle theme toggle
+    themeToggle.addEventListener('change', () => {
+      applyTheme(themeToggle.checked);
+    });
+  }
+}
 
 // Password toggle functionality
 function initializePasswordToggles() {
@@ -2408,6 +2453,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     // Detect and set display mode
     detectDisplayMode();
+    
+    // Initialize theme toggle
+    initializeThemeToggle();
     
     // Re-detect on resize for sidebar mode
     window.addEventListener('resize', detectDisplayMode);
